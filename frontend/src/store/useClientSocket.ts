@@ -1,7 +1,7 @@
 // 前端 WebSocket Hook：接收信号/订单/EA 状态推送。
 // Client WebSocket hook: receive signal/order/EA-status pushes.
 import { useEffect, useRef } from 'react'
-import { getToken } from '../api/client'
+import { getToken, API_BASE } from '../api/client'
 import type { WSMessage } from '../api/types'
 
 export function useClientSocket(onMessage: (msg: WSMessage) => void) {
@@ -17,8 +17,16 @@ export function useClientSocket(onMessage: (msg: WSMessage) => void) {
     let closed = false
 
     const connect = () => {
-      const proto = location.protocol === 'https:' ? 'wss' : 'ws'
-      ws = new WebSocket(`${proto}://${location.host}/ws/client?token=${token}`)
+      // 优先用 VITE_API_BASE 指向的线上后端；未配置则回退到当前页面 host（开发期走代理）。
+      // Prefer the backend from VITE_API_BASE; fall back to current host (dev proxy) when unset.
+      let wsBase: string
+      if (API_BASE) {
+        wsBase = API_BASE.replace(/^http/, 'ws')
+      } else {
+        const proto = location.protocol === 'https:' ? 'wss' : 'ws'
+        wsBase = `${proto}://${location.host}`
+      }
+      ws = new WebSocket(`${wsBase}/ws/client?token=${token}`)
 
       ws.onmessage = (ev) => {
         try {

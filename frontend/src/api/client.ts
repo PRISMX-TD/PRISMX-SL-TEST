@@ -3,6 +3,10 @@ import type { Signal, Order, EAStatus, User, MT5Account } from './types'
 
 const TOKEN_KEY = 'prismx_token'
 
+// API 基础地址：生产用 VITE_API_BASE 指向线上后端，开发留空走 Vite 代理。
+// API base: prod uses VITE_API_BASE to point at the deployed backend; dev leaves it empty to use the Vite proxy.
+export const API_BASE = (import.meta.env.VITE_API_BASE ?? '').replace(/\/$/, '')
+
 export function getToken(): string | null {
   return localStorage.getItem(TOKEN_KEY)
 }
@@ -21,7 +25,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = getToken()
   if (token) headers.Authorization = `Bearer ${token}`
 
-  const res = await fetch(`/api${path}`, { ...options, headers })
+  const res = await fetch(`${API_BASE}/api${path}`, { ...options, headers })
   if (!res.ok) {
     let detail = `HTTP ${res.status}`
     try {
