@@ -7,6 +7,7 @@
     "signals": "Signals",
     "bind": "Connect MT5",
     "orders": "Orders",
+    "download": "Download Bridge",
     "logout": "Log out"
   },
   "common": {
@@ -200,5 +201,33 @@
     "online": "MT5 Connected",
     "offline": "MT5 Disconnected",
     "account": "Account"
+  },
+  "download": {
+    "title": "Download PRISMX Bridge",
+    "subtitle": "The local app that links your MT5 terminals to PRISMX Signal Lab",
+    "version": "Current version",
+    "platform": "Works on Windows 10 / 11 (64-bit)",
+    "downloadBtn": "Download for Windows",
+    "downloading": "Starting download…",
+    "whatTitle": "What does the bridge do?",
+    "whatDesc": "PRISMX Bridge is a small app that runs on your computer. It automatically scans the MT5 terminals you're logged into, securely connects to the backend with your API token, reports accounts and positions to the web app, and executes the orders you send from the signal panel. Every trade runs on your own MT5.",
+    "guideTitle": "How to use",
+    "g1Title": "1. Download and install",
+    "g1Desc": "Click the button above to download the installer and run it. If Windows shows \"Windows protected your PC\", click \"More info → Run anyway\".",
+    "g2Title": "2. Copy your API token",
+    "g2Desc": "Go to the Connect MT5 page and copy your API token. Treat it like a password and never share it.",
+    "g3Title": "3. Launch and log into MT5",
+    "g3Desc": "Make sure MT5 is open and logged into your trading account on the same computer running the bridge. Multiple terminals can be logged in at once.",
+    "g4Title": "4. Paste the token and connect",
+    "g4Desc": "Open the bridge, paste your token, and click Connect. Once the status turns online, you can place orders from the signal panel.",
+    "notesTitle": "Important notes",
+    "n1": "The bridge must stay running. Closing it stops receiving and executing trades.",
+    "n2": "Run the bridge on the same computer where MT5 is logged in.",
+    "n3": "Enable \"Allow algorithmic trading\" in MT5, otherwise orders will be rejected by the terminal.",
+    "n4": "Your API token is like a password. Never share it; if you suspect a leak, reset it anytime on the Connect MT5 page.",
+    "n5": "Windows only; macOS is not supported yet.",
+    "sourceTitle": "Source and verification",
+    "sourceDesc": "The installer is hosted on GitHub Releases, where you can review release notes and file checksums.",
+    "sourceLink": "View releases on GitHub"
   }
 }

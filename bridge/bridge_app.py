@@ -24,7 +24,7 @@ from urllib import error, request
 from mt5_worker import poll_terminal
 
 # ---------- 版本 / Version ----------
-APP_VERSION = "1.1.0"
+APP_VERSION = "1.2.0"
 
 # ---------- 配置 / Configuration ----------
 # 线上后端地址（所有用户默认连接，无需手动填写）。
@@ -340,65 +340,142 @@ class BridgeGUI:
         self.saved_token = cfg.get("token", "")
 
         root.title(f"PRISMX Bridge v{APP_VERSION}")
-        root.geometry("560x480")
-        root.configure(bg="#0b1020")
+        root.geometry("600x520")
+        root.configure(bg=self.BG)
+        self._init_style()
         self._build_widgets()
 
-    def _build_widgets(self):
-        pad = {"padx": 14, "pady": 6}
+    # ---------- 主题配色 / theme palette ----------
+    BG = "#08080d"        # 近黑背景 / near-black background
+    PANEL = "#12121c"     # 面板 / panel
+    BORDER = "#23233a"    # 描边 / border
+    ACCENT = "#8b46ff"    # 荧光紫 / neon violet
+    ACCENT_HI = "#a779ff" # 亮紫 / bright violet
+    TEXT = "#e6e6f0"      # 主文字 / primary text
+    MUTED = "#8a8aa3"     # 次要文字 / muted text
+    FAINT = "#4a4a66"     # 极弱文字 / faint text
 
-        # 标题 / title
-        title_row = tk.Frame(self.root, bg="#0b1020")
-        title_row.pack(fill="x", **pad)
+    def _init_style(self):
+        """配置 ttk 暗色主题（表格）/ configure dark ttk theme for the table."""
+        style = ttk.Style()
+        try:
+            style.theme_use("clam")
+        except tk.TclError:
+            pass
+        style.configure(
+            "PX.Treeview",
+            background=self.PANEL, fieldbackground=self.PANEL, foreground=self.TEXT,
+            borderwidth=0, rowheight=26, font=("Segoe UI", 9),
+        )
+        style.map("PX.Treeview", background=[("selected", "#2a1d4d")], foreground=[("selected", self.ACCENT_HI)])
+        style.configure(
+            "PX.Treeview.Heading",
+            background="#1a1a2a", foreground=self.MUTED,
+            borderwidth=0, font=("Segoe UI", 9, "bold"),
+        )
+        style.map("PX.Treeview.Heading", background=[("active", "#22223a")])
+
+    def _draw_logo(self, parent, px=40):
+        """用 Canvas 绘制新 logo：黑底圆角 + 荧光紫三角描边（中间镂空）。
+        Draw the new logo on a Canvas: black rounded base + neon-violet
+        triangle outline with a hollow center.
+        """
+        c = tk.Canvas(parent, width=px, height=px, bg=self.BG, highlightthickness=0)
+        # 黑色圆角底 / black rounded base
+        r, pad = px * 0.26, 1
+        x0, y0, x1, y1 = pad, pad, px - pad, px - pad
+        c.create_oval(x0, y0, x0 + 2 * r, y0 + 2 * r, fill="#000000", outline="")
+        c.create_oval(x1 - 2 * r, y0, x1, y0 + 2 * r, fill="#000000", outline="")
+        c.create_oval(x0, y1 - 2 * r, x0 + 2 * r, y1, fill="#000000", outline="")
+        c.create_oval(x1 - 2 * r, y1 - 2 * r, x1, y1, fill="#000000", outline="")
+        c.create_rectangle(x0 + r, y0, x1 - r, y1, fill="#000000", outline="")
+        c.create_rectangle(x0, y0 + r, x1, y1 - r, fill="#000000", outline="")
+        # 荧光紫三角形描边（中间镂空）/ neon-violet hollow triangle
+        apex = (px * 0.5, px * 0.20)
+        bl = (px * 0.18, px * 0.78)
+        br = (px * 0.82, px * 0.78)
+        tri = [*apex, *br, *bl]
+        # 外层微光 / outer glow
+        c.create_polygon(tri, outline="#5b22c9", fill="", width=6, joinstyle="round")
+        c.create_polygon(tri, outline=self.ACCENT, fill="", width=3, joinstyle="round")
+        c.create_polygon(tri, outline=self.ACCENT_HI, fill="", width=1.4, joinstyle="round")
+        return c
+
+    def _build_widgets(self):
+        pad = {"padx": 18, "pady": 7}
+
+        # 标题区：logo + 名称 / header: logo + title
+        title_row = tk.Frame(self.root, bg=self.BG)
+        title_row.pack(fill="x", padx=18, pady=(16, 8))
+        self._draw_logo(title_row, px=42).pack(side="left")
+        name_box = tk.Frame(title_row, bg=self.BG)
+        name_box.pack(side="left", padx=12)
         tk.Label(
-            title_row, text="PRISMX Bridge",
-            font=("Segoe UI", 16, "bold"), fg="#a78bfa", bg="#0b1020",
-        ).pack(side="left")
+            name_box, text="PRISMX Bridge",
+            font=("Segoe UI", 17, "bold"), fg=self.TEXT, bg=self.BG,
+        ).pack(anchor="w")
         tk.Label(
-            title_row, text=f"v{APP_VERSION}",
-            font=("Segoe UI", 9), fg="#64748b", bg="#0b1020",
-        ).pack(side="left", padx=8, pady=(8, 0))
+            name_box, text=f"棱镜桥接 · v{APP_VERSION}",
+            font=("Segoe UI", 9), fg=self.ACCENT_HI, bg=self.BG,
+        ).pack(anchor="w")
+
+        # 分隔线 / divider
+        tk.Frame(self.root, bg=self.BORDER, height=1).pack(fill="x", padx=18, pady=(4, 10))
 
         # Token 输入区（第一步）/ token entry (the first step)
-        form = tk.Frame(self.root, bg="#0b1020")
+        form = tk.Frame(self.root, bg=self.BG)
         form.pack(fill="x", **pad)
 
-        tk.Label(form, text="API Token", fg="#cbd5e1", bg="#0b1020").grid(row=0, column=0, sticky="w")
+        tk.Label(form, text="API Token", fg=self.MUTED, bg=self.BG,
+                 font=("Segoe UI", 9, "bold")).grid(row=0, column=0, sticky="w")
         self.token_var = tk.StringVar(value=self.saved_token)
-        self.token_entry = tk.Entry(form, textvariable=self.token_var, width=48, show="•")
-        self.token_entry.grid(row=0, column=1, padx=8, pady=4)
+        self.token_entry = tk.Entry(
+            form, textvariable=self.token_var, width=46, show="•",
+            bg=self.PANEL, fg=self.TEXT, insertbackground=self.ACCENT_HI,
+            relief="flat", font=("Segoe UI", 10),
+        )
+        self.token_entry.grid(row=0, column=1, padx=10, pady=4, ipady=4)
 
         # 后端地址固定为线上地址，对用户隐藏，无需填写。
         # Backend URL is fixed to production and hidden from the user.
         self.backend_var = tk.StringVar(value=DEFAULT_BACKEND)
 
         # 连接 / 断开按钮 / connect & disconnect buttons
-        btns = tk.Frame(self.root, bg="#0b1020")
+        btns = tk.Frame(self.root, bg=self.BG)
         btns.pack(fill="x", **pad)
-        self.connect_btn = tk.Button(btns, text="连接 / Connect", command=self._on_connect,
-                                     bg="#7c3aed", fg="white", relief="flat", width=16)
+        self.connect_btn = tk.Button(
+            btns, text="连接 / Connect", command=self._on_connect,
+            bg=self.ACCENT, fg="white", relief="flat", width=16,
+            activebackground=self.ACCENT_HI, activeforeground="white",
+            font=("Segoe UI", 10, "bold"), cursor="hand2", bd=0, pady=6,
+        )
         self.connect_btn.pack(side="left")
-        self.disconnect_btn = tk.Button(btns, text="断开 / Disconnect", command=self._on_disconnect,
-                                        bg="#334155", fg="white", relief="flat", width=16, state="disabled")
+        self.disconnect_btn = tk.Button(
+            btns, text="断开 / Disconnect", command=self._on_disconnect,
+            bg="#1f1f30", fg=self.MUTED, relief="flat", width=16, state="disabled",
+            activebackground="#2a2a40", activeforeground=self.TEXT,
+            font=("Segoe UI", 10), cursor="hand2", bd=0, pady=6,
+        )
         self.disconnect_btn.pack(side="left", padx=8)
 
         # 状态栏 / status line
-        self.status_var = tk.StringVar(value="未连接 / Not connected")
-        tk.Label(self.root, textvariable=self.status_var, fg="#94a3b8", bg="#0b1020").pack(anchor="w", **pad)
+        self.status_var = tk.StringVar(value="● 未连接 / Not connected")
+        tk.Label(self.root, textvariable=self.status_var, fg=self.MUTED, bg=self.BG,
+                 font=("Segoe UI", 9)).pack(anchor="w", **pad)
 
         # 账号列表 / account table
         cols = ("login", "name", "company", "balance", "equity")
-        self.tree = ttk.Treeview(self.root, columns=cols, show="headings", height=10)
+        self.tree = ttk.Treeview(self.root, columns=cols, show="headings", height=10, style="PX.Treeview")
         for c, w in zip(cols, (90, 130, 130, 90, 90)):
             self.tree.heading(c, text=c)
             self.tree.column(c, width=w, anchor="center")
-        self.tree.pack(fill="both", expand=True, padx=14, pady=8)
+        self.tree.pack(fill="both", expand=True, padx=18, pady=8)
 
         # 底部：日志路径提示 / footer: log file hint
         tk.Label(
             self.root, text=f"运行日志 / Log: {LOG_PATH}",
-            font=("Segoe UI", 8), fg="#475569", bg="#0b1020",
-        ).pack(anchor="w", padx=14, pady=(0, 6))
+            font=("Segoe UI", 8), fg=self.FAINT, bg=self.BG,
+        ).pack(anchor="w", padx=18, pady=(0, 8))
 
     def _on_connect(self):
         token = self.token_var.get().strip()

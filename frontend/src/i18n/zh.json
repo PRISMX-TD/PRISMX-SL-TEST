@@ -7,6 +7,7 @@
     "signals": "信号面板",
     "bind": "连接 MT5",
     "orders": "订单回执",
+    "download": "下载桥接",
     "logout": "退出登录"
   },
   "common": {
@@ -200,5 +201,33 @@
     "online": "MT5 已连接",
     "offline": "MT5 未连接",
     "account": "账号"
+  },
+  "download": {
+    "title": "下载 PRISMX 桥接程序",
+    "subtitle": "连接你本机 MT5 终端与 PRISMX 信号实验室的本地程序",
+    "version": "当前版本",
+    "platform": "适用系统：Windows 10 / 11（64 位）",
+    "downloadBtn": "下载 Windows 版",
+    "downloading": "开始下载…",
+    "whatTitle": "桥接程序是做什么的？",
+    "whatDesc": "PRISMX 桥接是运行在你电脑上的小程序。它会自动扫描本机已登录的 MT5 终端，用你的专属 API Token 安全连接后端，把账户与持仓上报到网页，并执行你在信号面板下发的下单指令。所有交易都在你自己的 MT5 上执行。",
+    "guideTitle": "使用教程",
+    "g1Title": "1. 下载并安装",
+    "g1Desc": "点击上方按钮下载安装包，双击运行。若 Windows 提示「已保护你的电脑」，点击「更多信息 → 仍要运行」即可。",
+    "g2Title": "2. 复制 API Token",
+    "g2Desc": "前往「连接 MT5」页面，复制你的专属 API Token。该 Token 等同密码，请勿外泄。",
+    "g3Title": "3. 启动 MT5 并登录",
+    "g3Desc": "确保桥接程序运行的这台电脑上已打开 MT5 终端并登录了交易账户。可同时登录多个终端。",
+    "g4Title": "4. 填入 Token 并连接",
+    "g4Desc": "打开桥接程序，把 Token 粘贴进去，点击「连接」。状态变为在线后，即可在信号面板一键下单。",
+    "notesTitle": "注意事项",
+    "n1": "桥接程序必须保持运行，关闭后将无法接收和执行交易指令。",
+    "n2": "请在已登录 MT5 的同一台电脑上运行桥接程序。",
+    "n3": "需要在 MT5 中启用「允许算法交易」，否则下单会被终端拒绝。",
+    "n4": "API Token 等同密码，切勿分享给他人；如怀疑泄露，可在「连接 MT5」页面随时重置。",
+    "n5": "仅支持 Windows 系统；macOS 暂不支持。",
+    "sourceTitle": "开源与校验",
+    "sourceDesc": "安装包托管于 GitHub Releases。你可以在发布页查看版本说明与文件校验信息。",
+    "sourceLink": "在 GitHub 查看发布页"
   }
 }

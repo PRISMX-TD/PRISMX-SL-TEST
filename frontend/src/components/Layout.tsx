@@ -63,6 +63,7 @@ export default function Layout() {
               <NavItem to="/app" label={t('nav.signals')} />
               <NavItem to="/bind" label={t('nav.bind')} />
               <NavItem to="/orders" label={t('nav.orders')} />
+              <NavItem to="/download" label={t('nav.download')} />
             </nav>
 
             <div className="ml-auto flex items-center gap-3">
@@ -82,6 +83,7 @@ export default function Layout() {
             <NavItem to="/app" label={t('nav.signals')} />
             <NavItem to="/bind" label={t('nav.bind')} />
             <NavItem to="/orders" label={t('nav.orders')} />
+            <NavItem to="/download" label={t('nav.download')} />
           </nav>
         </header>
 
