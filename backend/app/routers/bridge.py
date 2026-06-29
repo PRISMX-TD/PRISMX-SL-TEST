@@ -148,13 +148,20 @@ async def bridge_poll(
                 entry = sig.entry or 0.0
                 stop_loss = sig.stop_loss or 0.0
                 take_profit = sig.take_profit or 0.0
+        # 订单自定义 SL/TP 优先于信号默认值 / order's custom SL·TP overrides signal defaults
+        if o.sl is not None:
+            stop_loss = o.sl
+        if o.tp is not None:
+            take_profit = o.tp
         suffix = suffix_by_login.get(target, "")
         commands.append({
             "clientOrderId": o.client_order_id,
+            "action": o.action or "ORDER",
             "login": target,
             "symbol": o.symbol + suffix,
             "side": o.side,
             "volume": o.volume,
+            "ticket": o.ticket or 0,
             "entry": entry,
             "stopLoss": stop_loss,
             "takeProfit": take_profit,

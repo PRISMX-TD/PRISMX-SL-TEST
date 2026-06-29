@@ -8,8 +8,16 @@ interface Props {
   eaOnline: boolean
   accounts: MT5Account[]
   onCancel: () => void
-  onConfirm: (volume: number, mt5Login: string | null) => Promise<void>
+  onConfirm: (
+    volume: number,
+    mt5Login: string | null,
+    stopLoss: number | null,
+    takeProfit: number | null,
+  ) => Promise<void>
 }
+
+// 快捷手数预设 / quick-lot presets
+const QUICK_LOTS = [0.01, 0.1, 0.5, 1.0]
 
 export default function OrderModal({ signal, eaOnline, accounts, onCancel, onConfirm }: Props) {
   const { t } = useTranslation()
@@ -32,6 +40,10 @@ export default function OrderModal({ signal, eaOnline, accounts, onCancel, onCon
     return (Math.floor(v * 100) / 100).toFixed(2)
   }
   const [volume, setVolume] = useState(() => suggestVolume(onlineAccounts[0]?.equity))
+
+  // 自定义止损止盈，默认取信号值（可编辑）/ custom SL·TP, default to signal values (editable)
+  const [sl, setSl] = useState(signal.stopLoss != null ? String(signal.stopLoss) : '')
+  const [tp, setTp] = useState(signal.takeProfit != null ? String(signal.takeProfit) : '')
 
   useEffect(() => {
     if (!login && onlineAccounts[0]) setLogin(onlineAccounts[0].login)
@@ -65,15 +77,27 @@ export default function OrderModal({ signal, eaOnline, accounts, onCancel, onCon
       setError(t('order.volume'))
       return
     }
+    const slNum = sl.trim() === '' ? null : parseFloat(sl)
+    const tpNum = tp.trim() === '' ? null : parseFloat(tp)
     setSubmitting(true)
     try {
-      await onConfirm(vol, hasAccounts ? login : null)
+      await onConfirm(vol, hasAccounts ? login : null, slNum, tpNum)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'error')
     } finally {
       setSubmitting(false)
     }
   }
+
+  // 粗估保证金占用：手数 × 合约规模(假定 100k) / 杠杆。仅作量级提示，非精确值。
+  // Rough margin estimate: lots × contract size (assume 100k) / leverage.
+  // Indicative magnitude only, not an exact figure.
+  const estMargin = (() => {
+    const vol = parseFloat(volume)
+    const lev = selected?.leverage
+    if (!vol || vol <= 0 || !lev || lev <= 0) return null
+    return (vol * 100000) / lev
+  })()
 
   const isBuy = signal.side === 'BUY'
 
@@ -100,14 +124,6 @@ export default function OrderModal({ signal, eaOnline, accounts, onCancel, onCon
             <span className="text-slate-400">{t('signals.entry')}</span>
             <span className="font-mono text-slate-200">{signal.entry}</span>
           </div>
-          <div className="flex justify-between">
-            <span className="text-slate-400">{t('signals.stopLoss')}</span>
-            <span className="font-mono text-down">{signal.stopLoss}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-slate-400">{t('signals.takeProfit')}</span>
-            <span className="font-mono text-up">{signal.takeProfit}</span>
-          </div>
         </div>
 
         <div className="mb-4">
@@ -120,6 +136,45 @@ export default function OrderModal({ signal, eaOnline, accounts, onCancel, onCon
             value={volume}
             onChange={(e) => setVolume(e.target.value)}
           />
+          {/* 快捷手数 / quick lots */}
+          <div className="mt-2 flex gap-2">
+            {QUICK_LOTS.map((q) => (
+              <button
+                key={q}
+                type="button"
+                onClick={() => setVolume(q.toFixed(2))}
+                className="flex-1 rounded-lg border border-ink-600 bg-ink-800/60 py-1 font-mono text-xs text-slate-300 transition hover:border-prism-600/50 hover:text-prism-300"
+              >
+                {q.toFixed(2)}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* 自定义止损止盈 / custom SL·TP */}
+        <div className="mb-4 grid grid-cols-2 gap-3">
+          <div>
+            <label className="label text-down">{t('signals.stopLoss')}</label>
+            <input
+              type="number"
+              step="0.00001"
+              className="input font-mono"
+              placeholder={t('order.slPlaceholder')}
+              value={sl}
+              onChange={(e) => setSl(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="label text-up">{t('signals.takeProfit')}</label>
+            <input
+              type="number"
+              step="0.00001"
+              className="input font-mono"
+              placeholder={t('order.tpPlaceholder')}
+              value={tp}
+              onChange={(e) => setTp(e.target.value)}
+            />
+          </div>
         </div>
 
         {hasAccounts && (
@@ -154,6 +209,16 @@ export default function OrderModal({ signal, eaOnline, accounts, onCancel, onCon
                 </span>
               </div>
             )}
+          </div>
+        )}
+
+        {estMargin != null && (
+          <div className="mb-4 flex items-center justify-between rounded-lg border border-ink-700 bg-ink-900/50 px-3 py-2 text-xs">
+            <span className="text-slate-400">{t('order.estMargin')}</span>
+            <span className="font-mono text-slate-200">
+              ≈ {estMargin.toLocaleString(undefined, { maximumFractionDigits: 0 })}{' '}
+              {selected?.accountCurrency ?? ''}
+            </span>
           </div>
         )}
 

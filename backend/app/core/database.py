@@ -66,6 +66,10 @@ def _migrate_columns() -> None:
         order_new = {
             "mt5_login": "VARCHAR",
             "delivered_at": datetime_type,
+            "action": "VARCHAR",
+            "ticket": "INTEGER",
+            "sl": "FLOAT",
+            "tp": "FLOAT",
         }
         with engine.begin() as conn:
             for name, col_type in order_new.items():

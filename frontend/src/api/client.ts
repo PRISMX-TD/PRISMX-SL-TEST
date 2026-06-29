@@ -86,8 +86,35 @@ export const orderApi = {
     volume: number
     clientOrderId: string
     mt5Login?: string | null
+    stopLoss?: number | null
+    takeProfit?: number | null
   }) =>
     request<Order>('/orders', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  close: (payload: {
+    clientOrderId: string
+    ticket: number
+    symbol: string
+    side: 'BUY' | 'SELL'
+    mt5Login?: string | null
+    volume?: number | null
+  }) =>
+    request<Order>('/orders/close', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  modify: (payload: {
+    clientOrderId: string
+    ticket: number
+    symbol: string
+    side: 'BUY' | 'SELL'
+    mt5Login?: string | null
+    stopLoss: number
+    takeProfit: number
+  }) =>
+    request<Order>('/orders/modify', {
       method: 'POST',
       body: JSON.stringify(payload),
     }),

@@ -19,14 +19,17 @@ export interface Signal {
 }
 
 export type OrderStatus = 'PENDING' | 'FILLED' | 'REJECTED' | 'FAILED'
+export type OrderAction = 'ORDER' | 'CLOSE' | 'MODIFY'
 
 export interface Order {
   id: string
   clientOrderId: string
   signalId: string | null
+  action?: OrderAction
   symbol: string
   side: 'BUY' | 'SELL'
   volume: number
+  ticket?: number | null
   mt5Login?: string | null
   status: OrderStatus
   mt5Ticket: number | null
@@ -66,10 +69,16 @@ export interface EAStatus {
 }
 
 export interface Position {
+  ticket?: number
   symbol: string
   side: 'BUY' | 'SELL'
   volume: number
   profit: number
+  entryPrice?: number
+  currentPrice?: number
+  stopLoss?: number
+  takeProfit?: number
+  login?: string | null
 }
 
 export interface WSMessage {

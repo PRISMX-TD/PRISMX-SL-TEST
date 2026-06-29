@@ -101,9 +101,17 @@ class Order(Base):
     user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
     signal_id = Column(String, ForeignKey("signals.id"), nullable=True)
     client_order_id = Column(String, nullable=False)
+    # 指令类型：ORDER 开仓 / CLOSE 平仓（含部分）/ MODIFY 改 SL·TP
+    # command action: ORDER (open) / CLOSE (incl. partial) / MODIFY (SL·TP)
+    action = Column(String, default="ORDER")
     symbol = Column(String, nullable=False)
     side = Column(String, nullable=False)
     volume = Column(Float, nullable=False)
+    # 目标持仓 ticket（平仓/改单用）/ target position ticket (close/modify)
+    ticket = Column(Integer, nullable=True)
+    # 自定义/目标止损止盈（绝对价）/ custom or target SL & TP (absolute price)
+    sl = Column(Float, nullable=True)
+    tp = Column(Float, nullable=True)
     # 目标 MT5 账号 login（多账号路由用）/ target MT5 login for routing
     mt5_login = Column(String, nullable=True)
     status = Column(String, default="PENDING")  # PENDING / FILLED / REJECTED / FAILED

@@ -58,6 +58,9 @@
     "side": "方向",
     "volume": "手数（Lots）",
     "account": "账户",
+    "slPlaceholder": "止损价（留空＝不设）",
+    "tpPlaceholder": "止盈价（留空＝不设）",
+    "estMargin": "预估保证金占用",
     "riskNote": "交易有风险，指令将下发到你连接的 MT5 账户执行。请确认手数与方向无误。",
     "submit": "确认下单",
     "submitting": "提交中…",
@@ -75,6 +78,7 @@
     "subtitle": "下单指令的执行状态与成交回执",
     "empty": "暂无订单记录",
     "colTime": "时间",
+    "colType": "类型",
     "colAccount": "账户",
     "colSymbol": "品种",
     "colSide": "方向",
@@ -83,6 +87,11 @@
     "colTicket": "MT5 单号",
     "colPrice": "成交价",
     "colMessage": "信息",
+    "action": {
+      "ORDER": "开仓",
+      "CLOSE": "平仓",
+      "MODIFY": "改单"
+    },
     "status": {
       "PENDING": "待执行",
       "FILLED": "已成交",
@@ -91,6 +100,22 @@
     },
     "positions": "当前持仓",
     "noPositions": "暂无持仓"
+  },
+  "positions": {
+    "lots": "手",
+    "entry": "入场价",
+    "current": "现价",
+    "sl": "止损",
+    "tp": "止盈",
+    "closeAll": "全平",
+    "partialClose": "部分平仓",
+    "editSlTp": "改止损止盈",
+    "closeVolume": "平仓手数",
+    "confirmClose": "确认平仓",
+    "confirmModify": "确认修改",
+    "closeSent": "平仓指令已发出，等待执行回执…",
+    "modifySent": "改单指令已发出，等待执行回执…",
+    "invalidVolume": "平仓手数无效"
   },
   "bind": {
     "title": "连接 MT5",

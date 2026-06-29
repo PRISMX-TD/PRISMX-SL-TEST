@@ -58,6 +58,9 @@
     "side": "Side",
     "volume": "Volume (Lots)",
     "account": "Account",
+    "slPlaceholder": "Stop loss (blank = none)",
+    "tpPlaceholder": "Take profit (blank = none)",
+    "estMargin": "Est. margin used",
     "riskNote": "Trading involves risk. This command will be sent to your connected MT5 account. Please verify volume and side.",
     "submit": "Confirm Order",
     "submitting": "Submitting…",
@@ -75,6 +78,7 @@
     "subtitle": "Execution status and fill receipts",
     "empty": "No orders yet",
     "colTime": "Time",
+    "colType": "Type",
     "colAccount": "Account",
     "colSymbol": "Symbol",
     "colSide": "Side",
@@ -83,6 +87,11 @@
     "colTicket": "MT5 Ticket",
     "colPrice": "Fill Price",
     "colMessage": "Message",
+    "action": {
+      "ORDER": "Open",
+      "CLOSE": "Close",
+      "MODIFY": "Modify"
+    },
     "status": {
       "PENDING": "Pending",
       "FILLED": "Filled",
@@ -91,6 +100,22 @@
     },
     "positions": "Open Positions",
     "noPositions": "No open positions"
+  },
+  "positions": {
+    "lots": "lots",
+    "entry": "Entry",
+    "current": "Current",
+    "sl": "SL",
+    "tp": "TP",
+    "closeAll": "Close All",
+    "partialClose": "Partial",
+    "editSlTp": "Edit SL/TP",
+    "closeVolume": "Close volume",
+    "confirmClose": "Confirm Close",
+    "confirmModify": "Confirm",
+    "closeSent": "Close command sent, waiting for receipt…",
+    "modifySent": "Modify command sent, waiting for receipt…",
+    "invalidVolume": "Invalid close volume"
   },
   "bind": {
     "title": "Connect MT5",

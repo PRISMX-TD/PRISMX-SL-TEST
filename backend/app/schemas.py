@@ -93,15 +93,41 @@ class OrderRequest(BaseModel):
     clientOrderId: str
     # 目标 MT5 账号 login（多账号时指定）/ target MT5 login (multi-account)
     mt5Login: str | None = None
+    # 自定义止损止盈（绝对价，省略则用信号默认值）/ custom SL·TP (absolute; falls back to signal)
+    stopLoss: float | None = None
+    takeProfit: float | None = None
+
+
+class ClosePositionRequest(BaseModel):
+    clientOrderId: str
+    ticket: int
+    symbol: str
+    side: str
+    mt5Login: str | None = None
+    # 平仓手数；省略或为 0 表示全平 / volume to close; omit or 0 means full close
+    volume: float | None = None
+
+
+class ModifyPositionRequest(BaseModel):
+    clientOrderId: str
+    ticket: int
+    symbol: str
+    side: str
+    mt5Login: str | None = None
+    # 新的止损止盈（绝对价，0 表示清除）/ new SL·TP (absolute; 0 clears)
+    stopLoss: float = 0.0
+    takeProfit: float = 0.0
 
 
 class OrderOut(BaseModel):
     id: str
     clientOrderId: str
     signalId: str | None = None
+    action: str = "ORDER"
     symbol: str
     side: str
     volume: float
+    ticket: int | None = None
     mt5Login: str | None = None
     status: str
     mt5Ticket: int | None = None

@@ -6,7 +6,12 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.models import EABinding, MT5Account, Order, Signal, User
-from app.schemas import OrderOut, OrderRequest
+from app.schemas import (
+    ClosePositionRequest,
+    ModifyPositionRequest,
+    OrderOut,
+    OrderRequest,
+)
 from app.services.connection_manager import manager
 from app.services.deps import get_current_user, validate_order
 
@@ -18,9 +23,11 @@ def _serialize(o: Order) -> OrderOut:
         id=o.id,
         clientOrderId=o.client_order_id,
         signalId=o.signal_id,
+        action=o.action or "ORDER",
         symbol=o.symbol,
         side=o.side,
         volume=o.volume,
+        ticket=o.ticket,
         mt5Login=o.mt5_login,
         status=o.status,
         mt5Ticket=o.mt5_ticket,
@@ -86,14 +93,23 @@ async def place_order(
             stop_loss = sig.stop_loss or 0.0
             take_profit = sig.take_profit or 0.0
 
+    # 用户自定义 SL/TP 覆盖信号默认值 / user's custom SL·TP overrides signal defaults
+    if req.stopLoss is not None:
+        stop_loss = req.stopLoss
+    if req.takeProfit is not None:
+        take_profit = req.takeProfit
+
     # 4) 落库为 PENDING / persist as PENDING
     order = Order(
         user_id=user.id,
         signal_id=req.signalId,
         client_order_id=req.clientOrderId,
+        action="ORDER",
         symbol=req.symbol,
         side=req.side,
         volume=req.volume,
+        sl=stop_loss or None,
+        tp=take_profit or None,
         mt5_login=req.mt5Login,
         status="PENDING",
     )
@@ -155,3 +171,129 @@ def list_orders(
         .all()
     )
     return {"orders": [_serialize(o) for o in rows]}
+
+
+async def _route_to_ea(user_id: str, order: Order, suffix: str, db: Session,
+                       entry: float = 0.0, stop_loss: float = 0.0, take_profit: float = 0.0) -> None:
+    """尝试通过 WS 即时下发指令给 EA；成功则标记 delivered，否则留待桥接轮询。
+    Try to push the command to the EA over WS; mark delivered on success,
+    otherwise leave PENDING for the bridge to poll.
+    """
+    delivered = await manager.send_to_ea(user_id, {
+        "type": "ORDER_CMD",
+        "clientOrderId": order.client_order_id,
+        "action": order.action,
+        "login": order.mt5_login,
+        "symbol": order.symbol + suffix,
+        "side": order.side,
+        "volume": order.volume,
+        "ticket": order.ticket or 0,
+        "entry": entry,
+        "stopLoss": stop_loss,
+        "takeProfit": take_profit,
+    })
+    if delivered:
+        order.delivered = True
+        order.delivered_at = datetime.now(timezone.utc)
+        db.commit()
+        db.refresh(order)
+
+
+def _suffix_for(user_id: str, mt5_login: str | None, db: Session) -> str:
+    """取目标账号的品种后缀 / resolve the symbol suffix for the target account."""
+    if mt5_login:
+        acc = (
+            db.query(MT5Account)
+            .filter(MT5Account.user_id == user_id, MT5Account.login == mt5_login)
+            .first()
+        )
+        if acc and (acc.symbol_suffix or "").strip():
+            return (acc.symbol_suffix or "").strip()
+    binding = db.query(EABinding).filter(EABinding.user_id == user_id).first()
+    return (binding.symbol_suffix or "").strip() if binding else ""
+
+
+@router.post("/close", response_model=OrderOut)
+async def close_position(
+    req: ClosePositionRequest,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """平仓（含部分平仓）：以 CLOSE 指令落库并下发。
+    Close a position (incl. partial): persist a CLOSE command and dispatch it.
+    """
+    if req.side not in ("BUY", "SELL"):
+        raise HTTPException(status_code=400, detail="方向无效 / Invalid side")
+    if req.ticket <= 0:
+        raise HTTPException(status_code=400, detail="持仓单号无效 / Invalid ticket")
+
+    # 幂等 / idempotency by clientOrderId
+    existing = (
+        db.query(Order)
+        .filter(Order.user_id == user.id, Order.client_order_id == req.clientOrderId)
+        .first()
+    )
+    if existing:
+        return _serialize(existing)
+
+    order = Order(
+        user_id=user.id,
+        client_order_id=req.clientOrderId,
+        action="CLOSE",
+        symbol=req.symbol,
+        side=req.side,
+        volume=req.volume or 0.0,
+        ticket=req.ticket,
+        mt5_login=req.mt5Login,
+        status="PENDING",
+    )
+    db.add(order)
+    db.commit()
+    db.refresh(order)
+
+    suffix = _suffix_for(user.id, req.mt5Login, db)
+    await _route_to_ea(user.id, order, suffix, db)
+    return _serialize(order)
+
+
+@router.post("/modify", response_model=OrderOut)
+async def modify_position(
+    req: ModifyPositionRequest,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """修改持仓止损止盈：以 MODIFY 指令落库并下发。
+    Modify a position's SL/TP: persist a MODIFY command and dispatch it.
+    """
+    if req.ticket <= 0:
+        raise HTTPException(status_code=400, detail="持仓单号无效 / Invalid ticket")
+
+    existing = (
+        db.query(Order)
+        .filter(Order.user_id == user.id, Order.client_order_id == req.clientOrderId)
+        .first()
+    )
+    if existing:
+        return _serialize(existing)
+
+    order = Order(
+        user_id=user.id,
+        client_order_id=req.clientOrderId,
+        action="MODIFY",
+        symbol=req.symbol,
+        side=req.side,
+        volume=0.0,
+        ticket=req.ticket,
+        sl=req.stopLoss,
+        tp=req.takeProfit,
+        mt5_login=req.mt5Login,
+        status="PENDING",
+    )
+    db.add(order)
+    db.commit()
+    db.refresh(order)
+
+    suffix = _suffix_for(user.id, req.mt5Login, db)
+    await _route_to_ea(user.id, order, suffix, db,
+                       stop_loss=req.stopLoss, take_profit=req.takeProfit)
+    return _serialize(order)

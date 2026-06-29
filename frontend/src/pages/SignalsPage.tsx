@@ -87,7 +87,12 @@ export default function SignalsPage() {
     toastTimer.current = window.setTimeout(() => setToast(null), ms)
   }
 
-  const handleConfirm = async (volume: number, mt5Login: string | null) => {
+  const handleConfirm = async (
+    volume: number,
+    mt5Login: string | null,
+    stopLoss: number | null,
+    takeProfit: number | null,
+  ) => {
     if (!active) return
     const placed = await orderApi.place({
       signalId: active.id,
@@ -96,6 +101,8 @@ export default function SignalsPage() {
       volume,
       clientOrderId: clientOrderId(),
       mt5Login,
+      stopLoss,
+      takeProfit,
     })
     setActive(null)
     refreshAll()

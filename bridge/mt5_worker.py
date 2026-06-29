@@ -121,17 +121,29 @@ def _account_payload(suffix: str) -> dict | None:
 
 
 def _positions_payload() -> list:
-    """读取持仓 / read open positions."""
+    """读取持仓 / read open positions.
+
+    除基础字段外，补充 ticket（平仓/改单定位用）、入场价、现价、SL/TP，
+    便于网页展示与执行平仓/改 SL·TP。
+    Besides the basics, include ticket (needed to close/modify), entry price,
+    current price and SL/TP so the web app can display and act on positions.
+    """
     positions = mt5.positions_get()
     if not positions:
         return []
     out = []
     for p in positions:
         out.append({
+            "ticket": int(p.ticket),
             "symbol": p.symbol,
             "side": "BUY" if p.type == mt5.POSITION_TYPE_BUY else "SELL",
             "volume": float(p.volume),
             "profit": float(p.profit),
+            "entryPrice": float(p.price_open),
+            "currentPrice": float(p.price_current),
+            "stopLoss": float(p.sl),
+            "takeProfit": float(p.tp),
+            "login": str(mt5.account_info().login) if mt5.account_info() else None,
         })
     return out
 
@@ -229,6 +241,123 @@ def _execute_order(cmd: dict) -> dict:
     }
 
 
+def _close_position(cmd: dict) -> dict:
+    """平仓（支持部分平仓）/ close a position (supports partial close).
+
+    通过 ticket 定位持仓，以反向市价单平掉指定手数；volume 省略或大于
+    持仓量则全平。Locate the position by ticket and close the given volume
+    with an opposite market order; full close if volume is omitted/too large.
+    """
+    client_order_id = cmd["clientOrderId"]
+    ticket = int(cmd.get("ticket", 0))
+    poss = mt5.positions_get(ticket=ticket)
+    if not poss:
+        # 持仓已不存在，视为已平 / position gone, treat as already closed
+        return {
+            "clientOrderId": client_order_id,
+            "success": True,
+            "message": "Position already closed",
+        }
+    pos = poss[0]
+    symbol = pos.symbol
+    if not mt5.symbol_select(symbol, True):
+        return {"clientOrderId": client_order_id, "success": False,
+                "message": f"Symbol not available: {symbol}"}
+
+    req_vol = float(cmd.get("volume", 0.0) or 0.0)
+    volume = pos.volume if req_vol <= 0 or req_vol > pos.volume else _normalize_volume(symbol, req_vol)
+
+    tick = mt5.symbol_info_tick(symbol)
+    if tick is None:
+        return {"clientOrderId": client_order_id, "success": False,
+                "message": f"No tick for {symbol}"}
+    # 平多用 bid 卖出，平空用 ask 买入 / opposite side to flatten
+    if pos.type == mt5.POSITION_TYPE_BUY:
+        order_type = mt5.ORDER_TYPE_SELL
+        price = tick.bid
+    else:
+        order_type = mt5.ORDER_TYPE_BUY
+        price = tick.ask
+
+    request = {
+        "action": mt5.TRADE_ACTION_DEAL,
+        "symbol": symbol,
+        "volume": volume,
+        "type": order_type,
+        "position": ticket,
+        "price": price,
+        "deviation": 20,
+        "magic": 778899,
+        "comment": "PRISMX close",
+        "type_time": mt5.ORDER_TIME_GTC,
+        "type_filling": mt5.ORDER_FILLING_IOC,
+    }
+    result = mt5.order_send(request)
+    if result is None:
+        return {"clientOrderId": client_order_id, "success": False,
+                "message": f"order_send failed: {mt5.last_error()}"}
+    success = result.retcode in (mt5.TRADE_RETCODE_DONE, mt5.TRADE_RETCODE_PLACED)
+    return {
+        "clientOrderId": client_order_id,
+        "success": success,
+        "mt5Ticket": ticket,
+        "filledPrice": float(result.price) if success else None,
+        "message": "Position closed" if success else _reject_reason(result.retcode),
+    }
+
+
+def _modify_position(cmd: dict) -> dict:
+    """修改持仓的止损/止盈 / modify a position's SL/TP.
+
+    sl/tp 为绝对价格，传 0 表示清除该项 / sl & tp are absolute prices; 0 clears it.
+    """
+    client_order_id = cmd["clientOrderId"]
+    ticket = int(cmd.get("ticket", 0))
+    poss = mt5.positions_get(ticket=ticket)
+    if not poss:
+        return {"clientOrderId": client_order_id, "success": False,
+                "message": "Position not found"}
+    pos = poss[0]
+    symbol = pos.symbol
+    info = mt5.symbol_info(symbol)
+    digits = info.digits if info else 5
+    sl = round(float(cmd.get("stopLoss", 0.0) or 0.0), digits)
+    tp = round(float(cmd.get("takeProfit", 0.0) or 0.0), digits)
+
+    request = {
+        "action": mt5.TRADE_ACTION_SLTP,
+        "symbol": symbol,
+        "position": ticket,
+        "sl": sl,
+        "tp": tp,
+        "magic": 778899,
+    }
+    result = mt5.order_send(request)
+    if result is None:
+        return {"clientOrderId": client_order_id, "success": False,
+                "message": f"order_send failed: {mt5.last_error()}"}
+    success = result.retcode in (mt5.TRADE_RETCODE_DONE, mt5.TRADE_RETCODE_PLACED)
+    return {
+        "clientOrderId": client_order_id,
+        "success": success,
+        "mt5Ticket": ticket,
+        "message": "SL/TP updated" if success else _reject_reason(result.retcode),
+    }
+
+
+def _dispatch_command(cmd: dict) -> dict:
+    """按指令类型分发执行 / dispatch by command action.
+
+    action: ORDER（默认下单）/ CLOSE（平仓）/ MODIFY（改 SL·TP）。
+    """
+    action = (cmd.get("action") or "ORDER").upper()
+    if action == "CLOSE":
+        return _close_position(cmd)
+    if action == "MODIFY":
+        return _modify_position(cmd)
+    return _execute_order(cmd)
+
+
 def poll_terminal(path: str, orders: list[dict] | None = None) -> dict:
     """连接一个终端，读取账号/持仓，并执行传入的下单指令。
     Attach to one terminal, read account/positions, execute given orders.
@@ -258,7 +387,7 @@ def poll_terminal(path: str, orders: list[dict] | None = None) -> dict:
         out["account"] = _account_payload(suffix)
         out["positions"] = _positions_payload()
         for cmd in orders or []:
-            out["results"].append(_execute_order(cmd))
+            out["results"].append(_dispatch_command(cmd))
     except Exception as e:
         out["error"] = str(e)
     finally:
