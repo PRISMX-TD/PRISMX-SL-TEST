@@ -1,5 +1,5 @@
 // 信号面板页 / Signals dashboard page
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLive } from '../store/live'
 import { orderApi } from '../api/client'
@@ -13,7 +13,9 @@ function SignalCard({ signal, onTrade }: { signal: Signal; onTrade: (s: Signal) 
   const expired = signal.status === 'EXPIRED'
 
   return (
-    <div className="card animate-fade-in-up p-4 transition hover:border-prism-600/50 hover:shadow-prism">
+    <div className={`card animate-fade-in-up p-4 transition ${
+      expired ? 'opacity-50 grayscale' : 'hover:border-prism-600/50 hover:shadow-prism'
+    }`}>
       <div className="mb-3 flex items-start justify-between">
         <div className="flex items-center gap-2">
           <span className="font-display text-lg font-bold tracking-wide text-slate-100">
@@ -74,9 +76,16 @@ function SignalCard({ signal, onTrade }: { signal: Signal; onTrade: (s: Signal) 
 
 export default function SignalsPage() {
   const { t } = useTranslation()
-  const { signals, anyOnline, accounts, refreshAll } = useLive()
+  const { signals, anyOnline, accounts, loaded, refreshAll } = useLive()
   const [active, setActive] = useState<Signal | null>(null)
-  const [toast, setToast] = useState('')
+  const [toast, setToast] = useState<{ msg: string; kind: 'success' | 'error' | 'info' } | null>(null)
+  const toastTimer = useRef<number | undefined>(undefined)
+
+  const showToast = (msg: string, kind: 'success' | 'error' | 'info' = 'success', ms = 3000) => {
+    if (toastTimer.current) window.clearTimeout(toastTimer.current)
+    setToast({ msg, kind })
+    toastTimer.current = window.setTimeout(() => setToast(null), ms)
+  }
 
   const handleConfirm = async (volume: number, mt5Login: string | null) => {
     if (!active) return
@@ -93,14 +102,14 @@ export default function SignalsPage() {
 
     // 若已是终态直接提示；否则轮询等待真实回执 / show terminal status, else poll for the real receipt
     if (placed.status === 'FILLED') {
-      showToast(t('order.filled', { price: placed.filledPrice ?? '-' }))
+      showToast(t('order.filled', { price: placed.filledPrice ?? '-' }), 'success')
       return
     }
     if (placed.status === 'REJECTED' || placed.status === 'FAILED') {
-      showToast(t('order.rejected', { msg: placed.message || '-' }))
+      showToast(t('order.rejected', { msg: placed.message || '-' }), 'error')
       return
     }
-    showToast(t('order.submitted'), 8000)
+    showToast(t('order.submitted'), 'info', 8000)
     await waitForReceipt(placed.id)
   }
 
@@ -113,12 +122,12 @@ export default function SignalsPage() {
         const o = orders.find((x) => x.id === orderId)
         if (!o) continue
         if (o.status === 'FILLED') {
-          showToast(t('order.filled', { price: o.filledPrice ?? '-' }))
+          showToast(t('order.filled', { price: o.filledPrice ?? '-' }), 'success')
           refreshAll()
           return
         }
         if (o.status === 'REJECTED' || o.status === 'FAILED') {
-          showToast(t('order.rejected', { msg: o.message || '-' }))
+          showToast(t('order.rejected', { msg: o.message || '-' }), 'error')
           refreshAll()
           return
         }
@@ -126,13 +135,15 @@ export default function SignalsPage() {
         // 忽略单次失败，继续轮询 / ignore a single failure and keep polling
       }
     }
-    showToast(t('order.ackTimeout'))
+    showToast(t('order.ackTimeout'), 'info')
   }
 
-  const showToast = (msg: string, ms = 3000) => {
-    setToast(msg)
-    setTimeout(() => setToast(''), ms)
-  }
+  const toastStyle =
+    toast?.kind === 'error'
+      ? 'border-down/40 bg-down/15 text-down'
+      : toast?.kind === 'info'
+        ? 'border-prism-600/40 bg-prism-600/15 text-prism-300'
+        : 'border-up/40 bg-up/15 text-up'
 
   return (
     <div>
@@ -141,9 +152,13 @@ export default function SignalsPage() {
         <p className="mt-1 text-sm text-slate-400">{t('signals.subtitle')}</p>
       </div>
 
-      {signals.length === 0 ? (
+      {!loaded ? (
         <div className="card flex flex-col items-center justify-center py-20 text-center">
           <div className="mb-3 h-10 w-10 animate-spin rounded-full border-2 border-prism-600/30 border-t-prism-500" />
+          <p className="text-sm text-slate-400">{t('common.loading')}</p>
+        </div>
+      ) : signals.length === 0 ? (
+        <div className="card flex flex-col items-center justify-center py-20 text-center">
           <p className="text-sm text-slate-400">{t('signals.empty')}</p>
         </div>
       ) : (
@@ -165,8 +180,10 @@ export default function SignalsPage() {
       )}
 
       {toast && (
-        <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 animate-fade-in-up rounded-xl border border-up/40 bg-up/15 px-5 py-3 text-sm text-up shadow-prism">
-          {toast}
+        <div
+          className={`fixed bottom-6 left-1/2 z-50 -translate-x-1/2 animate-fade-in-up rounded-xl border px-5 py-3 text-sm shadow-prism ${toastStyle}`}
+        >
+          {toast.msg}
         </div>
       )}
     </div>

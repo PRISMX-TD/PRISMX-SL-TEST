@@ -230,6 +230,7 @@ async def bridge_positions(
     user: User = Depends(get_bridge_user),
 ):
     """桥接程序上报持仓 / bridge reports open positions."""
+    manager.set_positions(user.id, req.data)
     await manager.push_to_client(user.id, {"type": "POSITIONS", "data": req.data})
     return {"ok": True}
 

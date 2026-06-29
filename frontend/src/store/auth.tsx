@@ -1,7 +1,7 @@
 // 认证状态 / Auth context
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import type { User } from '../api/types'
-import { authApi, clearToken, getToken, setToken } from '../api/client'
+import { authApi, clearToken, getToken, setToken, setUnauthorizedHandler } from '../api/client'
 
 interface AuthContextValue {
   user: User | null
@@ -24,6 +24,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     // token 缺失则清空用户 / clear user if token missing
     if (!getToken()) setUser(null)
+    // 注册 401 回调：凭证失效时清空用户态，路由守卫会自动跳回登录页。
+    // Register 401 handler: clear user on expired token; the route guard redirects to login.
+    setUnauthorizedHandler(() => {
+      localStorage.removeItem(USER_KEY)
+      setUser(null)
+    })
+    return () => setUnauthorizedHandler(null)
   }, [])
 
   const persist = (u: User, token: string) => {

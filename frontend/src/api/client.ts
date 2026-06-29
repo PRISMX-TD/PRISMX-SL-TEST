@@ -17,6 +17,18 @@ export function clearToken() {
   localStorage.removeItem(TOKEN_KEY)
 }
 
+// 未授权（401）回调：登录态过期时由 AuthProvider 注册，用于清状态并跳登录页。
+// Unauthorized (401) callback: registered by AuthProvider to clear state and redirect.
+let onUnauthorized: (() => void) | null = null
+export function setUnauthorizedHandler(fn: (() => void) | null) {
+  onUnauthorized = fn
+}
+// 主动触发未授权处理（如 WebSocket 鉴权失败时）/ trigger the unauthorized flow manually.
+export function triggerUnauthorized() {
+  clearToken()
+  onUnauthorized?.()
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -27,6 +39,12 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   const res = await fetch(`${API_BASE}/api${path}`, { ...options, headers })
   if (!res.ok) {
+    // 凭证失效：清除登录态并通知上层跳转登录页。
+    // Token expired/invalid: clear auth state and notify the app to redirect.
+    if (res.status === 401) {
+      clearToken()
+      onUnauthorized?.()
+    }
     let detail = `HTTP ${res.status}`
     try {
       const body = await res.json()

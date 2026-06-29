@@ -178,5 +178,6 @@ async def report_positions(
     user: User = Depends(get_ea_user),
 ):
     """EA 上报持仓 / EA reports open positions."""
+    manager.set_positions(user.id, req.data)
     await manager.push_to_client(user.id, {"type": "POSITIONS", "data": req.data})
     return {"ok": True}

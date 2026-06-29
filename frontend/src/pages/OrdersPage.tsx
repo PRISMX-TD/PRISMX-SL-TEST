@@ -5,7 +5,7 @@ import { fmtTime } from '../api/utils'
 import type { OrderStatus } from '../api/types'
 
 const statusStyle: Record<OrderStatus, string> = {
-  PENDING: 'bg-prism-600/15 text-prism-300',
+  PENDING: 'bg-amber-500/15 text-amber-400',
   FILLED: 'bg-up/15 text-up',
   REJECTED: 'bg-down/15 text-down',
   FAILED: 'bg-down/15 text-down',

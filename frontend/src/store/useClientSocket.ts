@@ -1,7 +1,7 @@
 // 前端 WebSocket Hook：接收信号/订单/EA 状态推送。
 // Client WebSocket hook: receive signal/order/EA-status pushes.
 import { useEffect, useRef } from 'react'
-import { getToken, API_BASE } from '../api/client'
+import { getToken, API_BASE, triggerUnauthorized } from '../api/client'
 import type { WSMessage } from '../api/types'
 
 export function useClientSocket(onMessage: (msg: WSMessage) => void) {
@@ -31,6 +31,14 @@ export function useClientSocket(onMessage: (msg: WSMessage) => void) {
       ws.onmessage = (ev) => {
         try {
           const msg = JSON.parse(ev.data) as WSMessage
+          // 鉴权失败：token 失效，停止重连并登出，避免静默重连死循环。
+          // Auth failed: token invalid; stop reconnecting and sign out to avoid a silent loop.
+          if (msg.type === 'AUTH_FAIL') {
+            closed = true
+            triggerUnauthorized()
+            ws?.close()
+            return
+          }
           handlerRef.current(msg)
         } catch {
           /* ignore malformed */

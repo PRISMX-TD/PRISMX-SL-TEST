@@ -66,7 +66,9 @@
     "filled": "已成交 @ {{price}}",
     "rejected": "下单被拒绝：{{msg}}",
     "ackTimeout": "暂未收到回执，请在订单页查看最新状态",
-    "eaOffline": "没有在线的 MT5 连接，无法下单"
+    "eaOffline": "没有在线的 MT5 连接，无法下单",
+    "noBridge": "尚未连接 MT5。请打开 PRISMX 桥接程序并填入 Token，或在 MT5 挂载 EA 后再下单。",
+    "allOffline": "已登记的 MT5 账户当前都已离线。请确认桥接程序在运行、MT5 已登录后重试。"
   },
   "orders": {
     "title": "订单与回执",
@@ -103,7 +105,7 @@
     "tokenTitle": "你的 API Token",
     "tokenHint": "此 Token 等同密码，请妥善保管。复制后粘贴到 EA 的 InpApiToken 参数。",
     "resetToken": "重置 Token",
-    "resetConfirm": "重置后旧 Token 立即失效，已挂载的 EA 需要更新。确定重置？",
+    "resetConfirm": "重置后旧 Token 立即失效，正在运行的桥接程序与已挂载的 EA 都需要重新填入新 Token，否则会连接失败。确定重置？",
     "accountTitle": "登记 MT5 账号",
     "accountHint": "登记后平台会校验 EA 上报的账号是否与此一致。",
     "mt5Login": "MT5 账号",

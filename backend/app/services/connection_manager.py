@@ -13,7 +13,17 @@ class ConnectionManager:
         self._ea: dict[str, WebSocket] = {}
         # user_id -> 前端连接集合 / set of client connections per user
         self._clients: dict[str, set[WebSocket]] = {}
+        # user_id -> 最近一次持仓快照 / latest positions snapshot per user
+        self._positions: dict[str, list] = {}
         self._lock = asyncio.Lock()
+
+    # ---------- 持仓缓存 / Positions cache ----------
+    def set_positions(self, user_id: str, positions: list) -> None:
+        """缓存某用户最新持仓，供前端重连时补推 / cache latest positions for re-push."""
+        self._positions[user_id] = positions or []
+
+    def get_positions(self, user_id: str) -> list:
+        return self._positions.get(user_id, [])
 
     # ---------- EA 连接 / EA connections ----------
     async def register_ea(self, user_id: str, ws: WebSocket) -> None:

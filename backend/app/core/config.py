@@ -50,3 +50,14 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+# 安全校验：生产环境（使用非本地 SQLite 数据库，例如 Postgres）必须配置自定义 JWT_SECRET，
+# 否则用默认弱密钥签发的 token 可被任意伪造。
+# Safety check: in production (non-local DB such as Postgres) a custom JWT_SECRET
+# is mandatory, otherwise tokens signed with the default weak key are forgeable.
+_DEFAULT_JWT_SECRET = "prismx-dev-secret-change-in-production"
+if settings.JWT_SECRET == _DEFAULT_JWT_SECRET and not settings.DATABASE_URL.startswith("sqlite"):
+    raise RuntimeError(
+        "JWT_SECRET 仍为默认值，生产环境必须在 .env 中设置强随机密钥。"
+        " / JWT_SECRET is still the default; set a strong random secret in .env for production."
+    )

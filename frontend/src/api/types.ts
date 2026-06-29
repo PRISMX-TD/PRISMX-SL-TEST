@@ -73,7 +73,7 @@ export interface Position {
 }
 
 export interface WSMessage {
-  type: 'AUTH_OK' | 'AUTH_FAIL' | 'SIGNAL_NEW' | 'ORDER_UPDATE' | 'EA_STATUS' | 'POSITIONS' | 'ACCOUNTS_STATUS'
+  type: 'AUTH_OK' | 'AUTH_FAIL' | 'SIGNAL_NEW' | 'SIGNAL_EXPIRED' | 'ORDER_UPDATE' | 'EA_STATUS' | 'POSITIONS' | 'ACCOUNTS_STATUS'
   data?: unknown
   reason?: string
   userId?: string

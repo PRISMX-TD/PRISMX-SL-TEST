@@ -29,6 +29,11 @@ async def ws_client(websocket: WebSocket):
 
     await manager.register_client(user_id, websocket)
     await websocket.send_json({"type": "AUTH_OK", "userId": user_id})
+    # 连接即补推最近一次持仓快照，避免刷新后持仓短暂消失。
+    # Re-push the latest positions snapshot on connect to avoid a blank gap after refresh.
+    cached = manager.get_positions(user_id)
+    if cached:
+        await websocket.send_json({"type": "POSITIONS", "data": cached})
     try:
         while True:
             # 前端通道以服务端推送为主，这里仅保活 / mainly server-push; keep alive
@@ -168,9 +173,11 @@ async def ws_ea(websocket: WebSocket):
 
             # 持仓上报 / positions report
             if mtype == "POSITIONS":
+                positions = msg.get("data", [])
+                manager.set_positions(user_id, positions)
                 await manager.push_to_client(user_id, {
                     "type": "POSITIONS",
-                    "data": msg.get("data", []),
+                    "data": positions,
                 })
                 continue
 

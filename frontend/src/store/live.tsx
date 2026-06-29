@@ -11,6 +11,8 @@ interface LiveContextValue {
   positions: Position[]
   eaStatus: EAStatus
   accounts: MT5Account[]
+  // 首屏数据是否加载完成 / whether the first data load has completed
+  loaded: boolean
   // 聚合连接状态（以桥接上报的账号为准）/ aggregated connection (bridge accounts are the source of truth)
   anyOnline: boolean
   onlineAccounts: MT5Account[]
@@ -25,6 +27,7 @@ export function LiveProvider({ children }: { children: ReactNode }) {
   const [positions, setPositions] = useState<Position[]>([])
   const [eaStatus, setEaStatus] = useState<EAStatus>({ online: false, mt5Login: null })
   const [accounts, setAccounts] = useState<MT5Account[]>([])
+  const [loaded, setLoaded] = useState(false)
 
   const refreshAll = useCallback(async () => {
     const [sig, ord, st, acc] = await Promise.all([
@@ -37,6 +40,7 @@ export function LiveProvider({ children }: { children: ReactNode }) {
     setOrders(ord.orders)
     setEaStatus(st)
     setAccounts(acc.accounts)
+    setLoaded(true)
   }, [])
 
   useEffect(() => {
@@ -48,6 +52,14 @@ export function LiveProvider({ children }: { children: ReactNode }) {
       case 'SIGNAL_NEW':
         setSignals((prev) => [msg.data as Signal, ...prev].slice(0, 50))
         break
+      case 'SIGNAL_EXPIRED': {
+        // 信号到期：置为 EXPIRED，前端置灰并禁用下单 / mark expired, grey out & disable
+        const { id } = msg.data as { id: string }
+        setSignals((prev) =>
+          prev.map((s) => (s.id === id ? { ...s, status: 'EXPIRED' as const } : s))
+        )
+        break
+      }
       case 'ORDER_UPDATE': {
         const updated = msg.data as Order
         setOrders((prev) => {
@@ -88,7 +100,7 @@ export function LiveProvider({ children }: { children: ReactNode }) {
 
   return (
     <LiveContext.Provider
-      value={{ signals, orders, positions, eaStatus, accounts, anyOnline, onlineAccounts, refreshAll }}
+      value={{ signals, orders, positions, eaStatus, accounts, loaded, anyOnline, onlineAccounts, refreshAll }}
     >
       {children}
     </LiveContext.Provider>

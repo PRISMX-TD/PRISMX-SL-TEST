@@ -13,7 +13,6 @@ interface Props {
 
 export default function OrderModal({ signal, eaOnline, accounts, onCancel, onConfirm }: Props) {
   const { t } = useTranslation()
-  const [volume, setVolume] = useState('0.10')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
 
@@ -21,9 +20,27 @@ export default function OrderModal({ signal, eaOnline, accounts, onCancel, onCon
   const onlineAccounts = accounts.filter((a) => a.online)
   const [login, setLogin] = useState<string>(() => onlineAccounts[0]?.login ?? '')
 
+  // 当前选中账号 / currently selected account
+  const selected = onlineAccounts.find((a) => a.login === login) || null
+
+  // 按净值粗估的默认手数：净值/EQUITY_PER_LOT(后端默认 200)，限制在 0.01~账户上限之间。
+  // Smart default volume from equity (equity / ~200 per lot), clamped to a sane range.
+  const suggestVolume = (eq?: number | null): string => {
+    if (!eq || eq <= 0) return '0.10'
+    const byEquity = eq / 200
+    const v = Math.max(0.01, Math.min(byEquity, 1))
+    return (Math.floor(v * 100) / 100).toFixed(2)
+  }
+  const [volume, setVolume] = useState(() => suggestVolume(onlineAccounts[0]?.equity))
+
   useEffect(() => {
     if (!login && onlineAccounts[0]) setLogin(onlineAccounts[0].login)
   }, [onlineAccounts, login])
+
+  // 切换账号时按其净值刷新建议手数 / refresh suggested volume when account changes
+  useEffect(() => {
+    setVolume(suggestVolume(selected?.equity))
+  }, [selected?.login])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onCancel()
@@ -34,6 +51,12 @@ export default function OrderModal({ signal, eaOnline, accounts, onCancel, onCon
   // 是否可下单：有在线 EA，或选中了一个在线账号 / can place: EA online or an account selected
   const hasAccounts = onlineAccounts.length > 0
   const canSubmit = hasAccounts ? !!login : eaOnline
+
+  // 离线提示分情况：从未连接 / 连过但都掉线 / no-connection messaging by case
+  const offlineMsg = accounts.length === 0 ? t('order.noBridge') : t('order.allOffline')
+
+  const fmtMoney = (n?: number | null) =>
+    n == null ? '-' : n.toLocaleString(undefined, { maximumFractionDigits: 2 })
 
   const submit = async () => {
     setError('')
@@ -115,6 +138,22 @@ export default function OrderModal({ signal, eaOnline, accounts, onCancel, onCon
                 </option>
               ))}
             </select>
+            {selected && (
+              <div className="mt-2 flex justify-between rounded-lg bg-ink-900/50 px-3 py-2 text-xs">
+                <span className="text-slate-400">
+                  {t('bind.equity')}
+                  <span className="ml-1 font-mono text-slate-200">
+                    {fmtMoney(selected.equity)} {selected.accountCurrency ?? ''}
+                  </span>
+                </span>
+                <span className="text-slate-400">
+                  {t('bind.balance')}
+                  <span className="ml-1 font-mono text-slate-200">
+                    {fmtMoney(selected.balance)}
+                  </span>
+                </span>
+              </div>
+            )}
           </div>
         )}
 
@@ -124,7 +163,7 @@ export default function OrderModal({ signal, eaOnline, accounts, onCancel, onCon
 
         {!canSubmit && (
           <div className="mb-4 rounded-lg border border-down/40 bg-down/10 px-3 py-2 text-sm text-down">
-            {t('order.eaOffline')}
+            {offlineMsg}
           </div>
         )}
 

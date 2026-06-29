@@ -119,9 +119,34 @@ def _serialize(sig: Signal) -> dict:
     ).model_dump(mode="json")
 
 
+async def _expire_and_broadcast() -> None:
+    """标记到期信号为 EXPIRED 并广播给前端 / mark expired signals and broadcast."""
+    db = SessionLocal()
+    expired_ids: list[str] = []
+    try:
+        now = datetime.now(timezone.utc)
+        active = (
+            db.query(Signal)
+            .filter(Signal.status == "ACTIVE", Signal.expire_at.isnot(None))
+            .all()
+        )
+        for s in active:
+            exp = s.expire_at
+            if exp.tzinfo is None:
+                exp = exp.replace(tzinfo=timezone.utc)
+            if exp < now:
+                s.status = "EXPIRED"
+                expired_ids.append(s.id)
+        if expired_ids:
+            db.commit()
+    finally:
+        db.close()
+    for sid in expired_ids:
+        await manager.broadcast_to_clients({"type": "SIGNAL_EXPIRED", "data": {"id": sid}})
+
+
 async def signal_loop() -> None:
     """信号生成主循环 / main signal generation loop."""
-    # 预热历史，让首个信号尽快出现 / pre-warm history so first signal appears soon
     for sym in SYMBOLS:
         for _ in range(40):
             _next_price(sym)
@@ -129,6 +154,9 @@ async def signal_loop() -> None:
     while True:
         await asyncio.sleep(settings.SIGNAL_INTERVAL_SECONDS)
         try:
+            # 0) 标记过期信号并广播，让前端实时置灰 / expire stale signals and broadcast
+            await _expire_and_broadcast()
+
             # 更新所有品种价格 / advance prices for all symbols
             for sym in SYMBOLS:
                 _next_price(sym)

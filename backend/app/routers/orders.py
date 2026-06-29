@@ -1,7 +1,7 @@
 """下单路由：提交下单、查询订单 / Orders router: place & query orders."""
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -69,6 +69,19 @@ async def place_order(
     if req.signalId:
         sig = db.query(Signal).filter(Signal.id == req.signalId).first()
         if sig:
+            # 拒绝按已过期信号下单，防止按过时价格成交。
+            # Reject orders on an expired signal to avoid trading on stale prices.
+            is_expired = sig.status == "EXPIRED"
+            if not is_expired and sig.expire_at is not None:
+                exp = sig.expire_at
+                if exp.tzinfo is None:
+                    exp = exp.replace(tzinfo=timezone.utc)
+                is_expired = exp < datetime.now(timezone.utc)
+            if is_expired:
+                raise HTTPException(
+                    status_code=409,
+                    detail="信号已过期，无法下单 / Signal expired, cannot place order",
+                )
             entry = sig.entry or 0.0
             stop_loss = sig.stop_loss or 0.0
             take_profit = sig.take_profit or 0.0

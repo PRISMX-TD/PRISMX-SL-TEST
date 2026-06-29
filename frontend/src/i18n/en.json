@@ -66,7 +66,9 @@
     "filled": "Filled @ {{price}}",
     "rejected": "Order rejected: {{msg}}",
     "ackTimeout": "No receipt yet, check the Orders page for the latest status",
-    "eaOffline": "No MT5 connection online, cannot place order"
+    "eaOffline": "No MT5 connection online, cannot place order",
+    "noBridge": "No MT5 connected yet. Open the PRISMX Bridge and paste your token, or load the EA in MT5, then place the order.",
+    "allOffline": "All registered MT5 accounts are currently offline. Make sure the Bridge is running and MT5 is logged in, then retry."
   },
   "orders": {
     "title": "Orders & Receipts",
@@ -103,7 +105,7 @@
     "tokenTitle": "Your API Token",
     "tokenHint": "This token is like a password. Keep it safe. Paste it into the EA's InpApiToken parameter.",
     "resetToken": "Reset Token",
-    "resetConfirm": "Resetting invalidates the old token immediately; mounted EAs must be updated. Reset?",
+    "resetConfirm": "Resetting invalidates the old token immediately. Any running Bridge app and mounted EAs must be updated with the new token, or they will fail to connect. Reset?",
     "accountTitle": "Register MT5 Account",
     "accountHint": "Once registered, the platform verifies the account reported by the EA matches this.",
     "mt5Login": "MT5 Login",
