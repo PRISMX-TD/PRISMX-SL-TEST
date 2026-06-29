@@ -27,7 +27,9 @@ from mt5_worker import poll_terminal
 APP_VERSION = "1.1.0"
 
 # ---------- 配置 / Configuration ----------
-DEFAULT_BACKEND = "http://127.0.0.1:8000"
+# 线上后端地址（所有用户默认连接，无需手动填写）。
+# Production backend URL (all users connect here by default; no manual entry needed).
+DEFAULT_BACKEND = "https://api.prismxsignallab.com"
 CONFIG_PATH = os.path.join(os.path.expanduser("~"), ".prismx_bridge.json")
 LOG_PATH = os.path.join(os.path.expanduser("~"), ".prismx_bridge.log")
 POLL_INTERVAL = 2.0  # 后端轮询间隔（秒）/ backend poll interval (seconds)
@@ -331,7 +333,6 @@ class BridgeGUI:
         self.engine: BridgeEngine | None = None
         cfg = load_config()
         self.saved_token = cfg.get("token", "")
-        self.saved_backend = cfg.get("backend", DEFAULT_BACKEND)
 
         root.title(f"PRISMX Bridge v{APP_VERSION}")
         root.geometry("560x480")
@@ -362,9 +363,9 @@ class BridgeGUI:
         self.token_entry = tk.Entry(form, textvariable=self.token_var, width=48, show="•")
         self.token_entry.grid(row=0, column=1, padx=8, pady=4)
 
-        tk.Label(form, text="后端地址 / Backend", fg="#cbd5e1", bg="#0b1020").grid(row=1, column=0, sticky="w")
-        self.backend_var = tk.StringVar(value=self.saved_backend)
-        tk.Entry(form, textvariable=self.backend_var, width=48).grid(row=1, column=1, padx=8, pady=4)
+        # 后端地址固定为线上地址，对用户隐藏，无需填写。
+        # Backend URL is fixed to production and hidden from the user.
+        self.backend_var = tk.StringVar(value=DEFAULT_BACKEND)
 
         # 连接 / 断开按钮 / connect & disconnect buttons
         btns = tk.Frame(self.root, bg="#0b1020")
@@ -396,7 +397,9 @@ class BridgeGUI:
 
     def _on_connect(self):
         token = self.token_var.get().strip()
-        backend = self.backend_var.get().strip() or DEFAULT_BACKEND
+        # 后端地址固定为线上地址，不再从用户输入或旧配置读取。
+        # Backend is fixed to production; never read from user input or stale config.
+        backend = DEFAULT_BACKEND
         if not token:
             messagebox.showwarning("PRISMX Bridge", "请先填写 API Token / Please enter your API token")
             return
