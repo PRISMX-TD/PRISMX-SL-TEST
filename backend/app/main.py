@@ -9,16 +9,19 @@ from app.core.config import settings
 from app.core.database import init_db
 from app.engine.signal_engine import signal_loop
 from app.routers import auth, bridge, ea, ea_poll, orders, signals, ws
+from app.routers.bridge import offline_monitor_loop
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # 启动：建表 + 启动信号引擎 / startup: create tables + start signal engine
+    # 启动：建表 + 启动信号引擎 + 离线检测 / startup: tables + engine + offline monitor
     init_db()
     task = asyncio.create_task(signal_loop())
+    monitor = asyncio.create_task(offline_monitor_loop())
     yield
-    # 关闭：停止信号引擎 / shutdown: stop signal engine
+    # 关闭：停止后台任务 / shutdown: stop background tasks
     task.cancel()
+    monitor.cancel()
 
 
 app = FastAPI(title=settings.APP_NAME, lifespan=lifespan)

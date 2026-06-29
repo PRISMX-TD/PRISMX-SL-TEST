@@ -1,4 +1,5 @@
-// EA 绑定页 / EA binding page
+// 连接 MT5 页：通过 PRISMX 桥接程序连接 MT5 账户。
+// Connect MT5 page: connect MT5 accounts via the PRISMX Bridge app.
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { eaApi } from '../api/client'
@@ -13,19 +14,13 @@ export default function BindPage() {
   const primary = onlineAccounts[0] || accounts[0] || null
 
   const [apiToken, setApiToken] = useState('')
-  const [boundAccount, setBoundAccount] = useState<string | null>(null)
-  const [mt5Login, setMt5Login] = useState('')
-  const [mt5Server, setMt5Server] = useState('')
   const [copied, setCopied] = useState(false)
-  const [saved, setSaved] = useState(false)
   const [suffix, setSuffix] = useState('')
   const [suffixSaved, setSuffixSaved] = useState(false)
 
   const loadToken = async () => {
     const res = await eaApi.getToken()
     setApiToken(res.apiToken)
-    setBoundAccount(res.boundAccount)
-    if (res.boundAccount) setMt5Login(res.boundAccount)
   }
 
   useEffect(() => {
@@ -49,13 +44,6 @@ export default function BindPage() {
     setApiToken(res.apiToken)
   }
 
-  const saveAccount = async () => {
-    await eaApi.registerAccount(mt5Login, mt5Server)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
-    refreshAll()
-  }
-
   const saveSuffix = async () => {
     await eaApi.setSuffix(suffix.trim())
     setSuffixSaved(true)
@@ -71,7 +59,7 @@ export default function BindPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-        {/* 多账号列表（桥接程序上报）/ multi-account list reported by the bridge */}
+        {/* PLACEHOLDER_ACCOUNTS */}
         {accounts.length > 0 && (
           <div className="card p-5 lg:col-span-2">
             <h3 className="mb-1 font-display text-lg font-semibold text-slate-100">
@@ -115,7 +103,7 @@ export default function BindPage() {
           </div>
         )}
 
-        {/* Token 管理 / Token management */}
+        {/* PLACEHOLDER_TOKEN */}
         <div className="card p-5">
           <h3 className="mb-1 font-display text-lg font-semibold text-slate-100">
             {t('bind.tokenTitle')}
@@ -134,14 +122,14 @@ export default function BindPage() {
           </div>
         </div>
 
-        {/* EA 状态 / EA status */}
+        {/* PLACEHOLDER_STATUS */}
         <div className="card p-5">
           <h3 className="mb-4 font-display text-lg font-semibold text-slate-100">
             {t('bind.statusTitle')}
           </h3>
           <div className="space-y-3">
             <div className="flex items-center justify-between rounded-lg bg-ink-900/50 px-4 py-3">
-              <span className="text-sm text-slate-400">EA</span>
+              <span className="text-sm text-slate-400">{t('bind.connection')}</span>
               <span className="flex items-center gap-2">
                 <span
                   className={`h-2 w-2 rounded-full ${
@@ -156,7 +144,7 @@ export default function BindPage() {
             <div className="flex items-center justify-between rounded-lg bg-ink-900/50 px-4 py-3">
               <span className="text-sm text-slate-400">{t('bind.boundAccount')}</span>
               <span className="font-mono text-sm text-slate-200">
-                {primary?.login || boundAccount || t('bind.none')}
+                {primary?.login || t('bind.none')}
               </span>
             </div>
             <div className="flex items-center justify-between rounded-lg bg-ink-900/50 px-4 py-3">
@@ -208,38 +196,7 @@ export default function BindPage() {
           </div>
         </div>
 
-        {/* MT5 账号登记 / MT5 account registration */}
-        <div className="card p-5">
-          <h3 className="mb-1 font-display text-lg font-semibold text-slate-100">
-            {t('bind.accountTitle')}
-          </h3>
-          <p className="mb-4 text-xs text-slate-500">{t('bind.accountHint')}</p>
-          <div className="space-y-3">
-            <div>
-              <label className="label">{t('bind.mt5Login')}</label>
-              <input
-                className="input font-mono"
-                placeholder={t('bind.mt5LoginPlaceholder')}
-                value={mt5Login}
-                onChange={(e) => setMt5Login(e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="label">{t('bind.mt5Server')}</label>
-              <input
-                className="input font-mono"
-                placeholder={t('bind.mt5ServerPlaceholder')}
-                value={mt5Server}
-                onChange={(e) => setMt5Server(e.target.value)}
-              />
-            </div>
-            <button onClick={saveAccount} className="btn-primary w-full py-2 text-sm">
-              {saved ? t('bind.saved') : t('bind.saveAccount')}
-            </button>
-          </div>
-        </div>
-
-        {/* 品种后缀设置 / symbol suffix setting */}
+        {/* PLACEHOLDER_SUFFIX */}
         <div className="card p-5">
           <h3 className="mb-1 font-display text-lg font-semibold text-slate-100">
             {t('bind.suffixTitle')}
@@ -261,7 +218,7 @@ export default function BindPage() {
           </div>
         </div>
 
-        {/* 接入步骤 / setup steps */}
+        {/* PLACEHOLDER_STEPS */}
         <div className="card p-5">
           <h3 className="mb-4 font-display text-lg font-semibold text-slate-100">
             {t('bind.steps.title')}

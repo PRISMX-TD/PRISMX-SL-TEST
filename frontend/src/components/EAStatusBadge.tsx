@@ -1,4 +1,4 @@
-// EA 在线状态徽标 / EA online status badge
+// MT5 连接状态徽标（桥接上报）/ MT5 connection status badge (reported by bridge)
 import { useTranslation } from 'react-i18next'
 import { useLive } from '../store/live'
 
@@ -14,10 +14,10 @@ export default function EAStatusBadge() {
       }`}
     >
       <span className={`h-2 w-2 rounded-full ${online ? 'bg-up animate-breathe' : 'bg-slate-500'}`} />
-      <span>{online ? t('eaStatus.online') : t('eaStatus.offline')}</span>
+      <span>{online ? t('connStatus.online') : t('connStatus.offline')}</span>
       {online && onlineAccounts.length === 1 && (
         <span className="font-mono text-xs text-slate-400">
-          {t('eaStatus.account')} {onlineAccounts[0].login}
+          {t('connStatus.account')} {onlineAccounts[0].login}
         </span>
       )}
       {online && onlineAccounts.length > 1 && (

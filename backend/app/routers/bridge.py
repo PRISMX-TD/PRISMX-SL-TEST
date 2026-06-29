@@ -17,8 +17,11 @@ from app.services.deps import get_current_user
 
 router = APIRouter(prefix="/bridge", tags=["bridge"])
 
-# 账号在线判定窗口（秒）/ online window for an account (seconds)
-ONLINE_WINDOW = 20
+# 账号在线判定窗口（秒）：桥接每 2 秒轮询一次，留 3 个周期容错，
+# 既能快速反映断线（约 6~7 秒内置灰），又不会因偶发丢包误判离线。
+# Online window (s): bridge polls every 2s; allow ~3 missed cycles so a
+# disconnect is reflected within ~6-7s without flapping on a single drop.
+ONLINE_WINDOW = 7
 
 
 def get_bridge_user(
@@ -291,3 +294,49 @@ def set_account_suffix(
     row.symbol_suffix = (req.symbolSuffix or "").strip()
     db.commit()
     return {"ok": True, "login": req.login, "symbolSuffix": row.symbol_suffix}
+
+
+# ---------- 离线检测后台任务 / offline-detection background task ----------
+async def offline_monitor_loop() -> None:
+    """周期性检测账号从在线转离线并推送给前端。
+
+    桥接停止轮询时不会再发 ACCOUNTS_STATUS，仅靠 last_heartbeat 过期，
+    前端要等下次主动刷新才知道。此任务每 2 秒扫描一次，发现某用户的在线
+    账号集合发生变化（尤其是变空）就主动推送，使断线在数秒内反映到前端。
+
+    Periodically detect accounts that transitioned online->offline and push to
+    clients. When the bridge stops polling it no longer sends ACCOUNTS_STATUS,
+    so without this the UI only updates on the next manual refresh. Scanning
+    every 2s and pushing on change makes a disconnect show up within seconds.
+    """
+    import asyncio
+
+    from app.core.database import SessionLocal
+
+    # user_id -> 上次推送的在线账号集合 / last pushed online-login set per user
+    last_online: dict[str, set[str]] = {}
+    while True:
+        await asyncio.sleep(2)
+        try:
+            db = SessionLocal()
+            try:
+                rows = db.query(MT5Account).all()
+                current: dict[str, set[str]] = {}
+                for r in rows:
+                    if _is_online(r):
+                        current.setdefault(r.user_id, set()).add(r.login)
+                # 合并历史里出现过的用户，确保「全部离线」也能被检测到。
+                # Include users seen before so an all-offline transition is caught.
+                for uid in set(last_online) | set(current):
+                    now_set = current.get(uid, set())
+                    if now_set != last_online.get(uid, set()):
+                        await manager.push_to_client(
+                            uid,
+                            {"type": "ACCOUNTS_STATUS", "data": {"onlineLogins": sorted(now_set)}},
+                        )
+                        last_online[uid] = now_set
+            finally:
+                db.close()
+        except Exception:
+            # 后台任务不因单次异常退出 / never let the loop die on a transient error
+            pass

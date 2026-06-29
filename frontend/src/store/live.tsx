@@ -47,6 +47,17 @@ export function LiveProvider({ children }: { children: ReactNode }) {
     refreshAll()
   }, [refreshAll])
 
+  // 兜底轮询：每 5 秒刷新一次账号在线状态，防止 WebSocket 推送丢失导致状态卡住。
+  // 配合后端 ~7s 在线窗口与离线检测任务，断线可在数秒内置灰。
+  // Fallback polling: refresh account online status every 5s in case a WS push
+  // is missed, so a disconnect greys out within seconds alongside the backend monitor.
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      accountApi.list().then((r) => setAccounts(r.accounts)).catch(() => {})
+    }, 5000)
+    return () => window.clearInterval(timer)
+  }, [])
+
   const handleMessage = useCallback((msg: WSMessage) => {
     switch (msg.type) {
       case 'SIGNAL_NEW':
