@@ -14,6 +14,7 @@ export default {
           600: '#2a2042',
         },
         prism: {
+          200: '#ddccff',
           300: '#cbb4ff',
           400: '#a779ff',
           500: '#8b46ff',
