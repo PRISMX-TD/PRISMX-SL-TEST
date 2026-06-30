@@ -2,16 +2,31 @@
 // Live charts page: embeds the TradingView Advanced Chart widget.
 //
 // 数据由用户浏览器直连 TradingView，不经过后端 / VPS，因此无论多少用户都
-// 不会给后端带来额外负载。品种默认联动用户当前持仓 / 信号。
+// 不会给后端带来额外负载。品种为固定预设列表（贵金属/能源/加密/热门货币对）。
 // Candle data is fetched by the browser directly from TradingView (never via
 // our backend/VPS), so it adds no server load regardless of user count. The
-// symbol defaults to the user's current position / latest signal.
-import { useEffect, useMemo, useRef, useState } from 'react'
+// symbol list is a fixed preset (metals/energy/crypto/popular FX pairs).
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useLive } from '../store/live'
 import { mt5ToTradingView } from '../api/utils'
 
-// 可选周期 / selectable intervals (TradingView interval codes)
+// 固定品种预设：贵金属 / 能源 / 加密 / 热门货币对。
+// Fixed symbol presets: metals / energy / crypto / popular FX pairs.
+const PRESET_SYMBOLS = [
+  'XAUUSD',
+  'XAGUSD',
+  'USOIL',
+  'BTCUSD',
+  'EURUSD',
+  'GBPUSD',
+  'USDJPY',
+  'AUDUSD',
+  'USDCAD',
+  'USDCHF',
+  'NZDUSD',
+  'EURJPY',
+  'GBPJPY',
+]
 const INTERVALS: { code: string; label: string }[] = [
   { code: '1', label: '1m' },
   { code: '5', label: '5m' },
@@ -22,32 +37,25 @@ const INTERVALS: { code: string; label: string }[] = [
 ]
 
 const INTERVAL_KEY = 'prismx.charts.interval'
+const SYMBOL_KEY = 'prismx.charts.symbol'
 
 export default function ChartsPage() {
   const { t } = useTranslation()
-  const { positions, signals } = useLive()
   const containerRef = useRef<HTMLDivElement>(null)
 
-  // 候选品种：来自持仓与信号，去重 / candidate symbols from positions & signals
-  const symbols = useMemo(() => {
-    const set = new Set<string>()
-    positions.forEach((p) => p.symbol && set.add(p.symbol))
-    signals.forEach((s) => s.symbol && set.add(s.symbol))
-    const list = Array.from(set)
-    // 没有任何持仓/信号时给个常用默认 / fallback when nothing is open
-    return list.length ? list : ['XAUUSD', 'EURUSD', 'BTCUSD']
-  }, [positions, signals])
-
-  const [symbol, setSymbol] = useState<string>(symbols[0])
+  const [symbol, setSymbol] = useState<string>(
+    () => {
+      const saved = localStorage.getItem(SYMBOL_KEY)
+      return saved && PRESET_SYMBOLS.includes(saved) ? saved : PRESET_SYMBOLS[0]
+    }
+  )
   const [interval, setIntervalCode] = useState<string>(
     () => localStorage.getItem(INTERVAL_KEY) || '15'
   )
 
-  // 候选品种变化后，若当前选择已不在列表中则回退到第一个。
-  // If the current pick disappears from the list, fall back to the first one.
   useEffect(() => {
-    if (!symbols.includes(symbol)) setSymbol(symbols[0])
-  }, [symbols, symbol])
+    localStorage.setItem(SYMBOL_KEY, symbol)
+  }, [symbol])
 
   useEffect(() => {
     localStorage.setItem(INTERVAL_KEY, interval)
@@ -84,6 +92,9 @@ export default function ChartsPage() {
       gridColor: 'rgba(139, 70, 255, 0.08)',
       hide_top_toolbar: false,
       hide_legend: false,
+      // 不默认加载任何指标（含成交量）/ don't load any default study (incl. volume)
+      hide_volume: true,
+      studies: [],
       allow_symbol_change: false,
       save_image: false,
       withdateranges: true,
@@ -116,7 +127,7 @@ export default function ChartsPage() {
             onChange={(e) => setSymbol(e.target.value)}
             className="rounded-lg border border-white/10 bg-ink-800/80 px-3 py-1.5 text-sm text-slate-100 outline-none transition focus:border-prism-500"
           >
-            {symbols.map((s) => (
+            {PRESET_SYMBOLS.map((s) => (
               <option key={s} value={s}>
                 {s}
               </option>
