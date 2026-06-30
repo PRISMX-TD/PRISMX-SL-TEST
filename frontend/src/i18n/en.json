@@ -110,6 +110,18 @@
     "all": "All",
     "group": "Group",
     "flat": "Flat",
+    "groupByLabel": "Group",
+    "groupBy": {
+      "none": "No grouping",
+      "status": "By status",
+      "indicator": "By indicator"
+    },
+    "stats": {
+      "active": "Active signals",
+      "bias": "Buy / Sell",
+      "expiring": "Expiring soon",
+      "avgRr": "Avg R:R"
+    },
     "viewCard": "Cards",
     "viewTable": "Table",
     "sort": {

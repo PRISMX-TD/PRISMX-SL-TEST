@@ -18,11 +18,12 @@ const NEW_HIGHLIGHT_MS = 6000
 type SideFilter = 'ALL' | 'BUY' | 'SELL'
 type StatusFilter = 'ALL' | 'ACTIVE' | 'EXPIRING' | 'EXPIRED'
 type SortKey = 'latest' | 'expiry' | 'rr' | 'symbol' | 'indicator'
-type Layout = 'group' | 'flat'
+// 分组维度：不分组 / 按状态 / 按指标 / group dimension
+type GroupBy = 'none' | 'status' | 'indicator'
 type ViewMode = 'card' | 'table'
 
 interface Prefs {
-  layout: Layout
+  groupBy: GroupBy
   view: ViewMode
   sort: SortKey
 }
@@ -36,11 +37,16 @@ function prefsKey(userId: string | null | undefined): string {
 }
 
 function loadPrefs(userId: string | null | undefined): Prefs {
-  const fallback: Prefs = { layout: 'group', view: 'card', sort: 'latest' }
+  const fallback: Prefs = { groupBy: 'status', view: 'card', sort: 'latest' }
   try {
     const raw = localStorage.getItem(prefsKey(userId))
     if (!raw) return fallback
-    return { ...fallback, ...(JSON.parse(raw) as Partial<Prefs>) }
+    const parsed = JSON.parse(raw) as Partial<Prefs> & { layout?: 'group' | 'flat' }
+    // 兼容旧字段 layout：group→status，flat→none / migrate legacy "layout"
+    if (parsed.groupBy == null && parsed.layout != null) {
+      parsed.groupBy = parsed.layout === 'flat' ? 'none' : 'status'
+    }
+    return { ...fallback, ...parsed }
   } catch {
     return fallback
   }
@@ -181,39 +187,44 @@ function SignalCard({
   const isBuy = signal.side === 'BUY'
   const eff = effectiveStatus(signal, now)
   const expired = eff === 'EXPIRED'
-
-  const statusTag =
-    eff === 'EXPIRED'
-      ? 'bg-white/5 text-slate-500'
-      : eff === 'EXPIRING'
-        ? 'border border-amber-400/40 bg-amber-400/10 text-amber-400'
-        : 'border border-prism-500/30 bg-prism-600/15 text-prism-300'
-  const statusLabel =
-    eff === 'EXPIRED'
-      ? t('signals.expired')
-      : eff === 'EXPIRING'
-        ? t('signals.expiringSoon')
-        : t('signals.active')
+  const rr = calcRiskReward(signal.symbol, signal.entry, signal.stopLoss, signal.takeProfit)
 
   return (
     <div
-      className={`glass-neon animate-fade-in-up p-5 ${expired ? 'opacity-50 grayscale' : ''} ${
-        isNew ? 'ring-2 ring-prism-500/70 animate-glow-pulse' : ''
-      }`}
+      className={`glass-neon animate-fade-in-up flex flex-col gap-3 p-4 ${
+        expired ? 'opacity-60' : ''
+      } ${isNew ? 'ring-2 ring-prism-500/70 animate-glow-pulse' : ''}`}
     >
-      <div className="mb-3 flex items-start justify-between">
+      {/* 顶行：品种 + 方向（左）｜ RR（右）— 突出决策关键信息 */}
+      {/* Top row: symbol + side (left) | R:R (right) — surface the decision drivers */}
+      <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2">
           <span className="font-display text-lg font-bold tracking-wide text-slate-100">
             {signal.symbol}
           </span>
-          <span className={`tag ${isBuy ? 'bg-up/15 text-up' : 'bg-down/15 text-down'}`}>
+          <span
+            className={`tag ${isBuy ? 'bg-up/15 text-up' : 'bg-down/15 text-down'}`}
+          >
             {isBuy ? t('common.buy') : t('common.sell')}
           </span>
+          {eff === 'EXPIRING' && (
+            <span className="tag border border-amber-400/40 bg-amber-400/10 text-amber-400">
+              {t('signals.expiringSoon')}
+            </span>
+          )}
         </div>
-        <span className={`tag ${statusTag}`}>{statusLabel}</span>
+        <div className="text-right">
+          <div className={`font-mono text-lg font-bold leading-none ${rrTone(rr?.rr ?? null)}`}>
+            {rr?.rr != null ? `1:${rr.rr.toFixed(2)}` : '-'}
+          </div>
+          <div className="mt-0.5 text-[10px] uppercase tracking-wider text-slate-500">
+            {t('signals.rr')}
+          </div>
+        </div>
       </div>
 
-      <div className="mb-3 grid grid-cols-3 gap-2 text-center">
+      {/* 价格三宫格 / price cells */}
+      <div className="grid grid-cols-3 gap-2 text-center">
         <div className="rounded-lg border border-white/5 bg-white/[0.03] py-2">
           <div className="text-[10px] uppercase tracking-wider text-slate-500">
             {t('signals.entry')}
@@ -234,28 +245,21 @@ function SignalCard({
         </div>
       </div>
 
-      <div className="mb-3 flex items-center justify-between rounded-lg border border-white/5 bg-white/[0.03] px-3 py-2">
-        <span className="text-[10px] uppercase tracking-wider text-slate-500">
-          {t('signals.rr')}
-        </span>
-        <RiskReward signal={signal} />
-      </div>
+      {/* 倒计时条 / countdown bar */}
+      <CountdownBar signal={signal} now={now} />
 
-      <div className="mb-3">
-        <CountdownBar signal={signal} now={now} />
-      </div>
-
-      <div className="mb-3 text-xs text-slate-400">
-        <span className="text-slate-500">{t('signals.indicator')}: </span>
-        {signal.indicator}
-      </div>
-
-      <div className="flex items-center justify-between">
-        <span className="text-xs text-slate-500">{fmtTime(signal.createdAt)}</span>
+      {/* 底部：指标（弱化、可截断）+ 下单按钮 / footer: indicator (muted) + trade */}
+      <div className="flex items-end justify-between gap-3 pt-1">
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-xs text-slate-400" title={signal.indicator ?? ''}>
+            {signal.indicator || '-'}
+          </div>
+          <div className="mt-0.5 text-[10px] text-slate-600">{fmtTime(signal.createdAt)}</div>
+        </div>
         <button
           onClick={() => onTrade(signal)}
           disabled={expired}
-          className="btn-primary px-4 py-1.5 text-sm"
+          className="btn-primary shrink-0 px-4 py-1.5 text-sm"
         >
           {t('signals.trade')}
         </button>
@@ -454,6 +458,8 @@ export default function SignalsPage() {
   const [sideFilter, setSideFilter] = useState<SideFilter>('ALL')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL')
   const [prefs, setPrefs] = useState<Prefs>(() => loadPrefs(user?.id))
+  // 用户手动展开/收起的分组（覆盖默认折叠）/ user-toggled groups overriding defaults
+  const [openOverrides, setOpenOverrides] = useState<Record<string, boolean>>({})
 
   // 用户切换时按该用户上次保存的偏好恢复 / restore each user's own saved prefs on switch
   useEffect(() => {
@@ -505,12 +511,24 @@ export default function SignalsPage() {
     return sorted
   }, [signals, search, sideFilter, statusFilter, prefs.sort, now])
 
-  // 分组：排序为"触发指标"时按指标分类，否则按状态（即将到期/活跃/已过期）。
-  // Group by indicator category when sorting by trigger; otherwise by status.
-  const groups = useMemo(() => {
-    if (prefs.sort === 'indicator') {
-      // 按指标类别聚类，保持 visible 的指标排序顺序；空指标归到末尾。
-      // Cluster by indicator category, preserving visible's order; empty sinks to the end.
+  // 分组：按用户选择的维度（不分组 / 按状态 / 按指标）。
+  // group 维度与排序解耦；组内统一按状态优先级（有效 > 即将到期 > 已过期）。
+  // Group by the user-selected dimension, decoupled from sort. Within each group,
+  // items are ordered by status priority so live signals come first.
+  const groups = useMemo<
+    { key: string; label: string; items: Signal[]; collapsedByDefault: boolean }[]
+  >(() => {
+    const statusRank: Record<EffStatus, number> = { ACTIVE: 0, EXPIRING: 1, EXPIRED: 2 }
+    const byStatus = (items: Signal[]) =>
+      items
+        .slice()
+        .sort((a, b) => statusRank[effectiveStatus(a, now)] - statusRank[effectiveStatus(b, now)])
+
+    if (prefs.groupBy === 'none') {
+      return [{ key: 'all', label: '', items: visible, collapsedByDefault: false }]
+    }
+
+    if (prefs.groupBy === 'indicator') {
       const order: string[] = []
       const buckets = new Map<string, Signal[]>()
       for (const s of visible) {
@@ -521,29 +539,47 @@ export default function SignalsPage() {
         }
         buckets.get(cat)!.push(s)
       }
-      // 组内按状态优先级排序：有效 > 即将到期 > 已过期，避免过期信号排在前面。
-      // Within each bucket, order by status: active > expiring > expired.
-      const statusRank: Record<EffStatus, number> = { ACTIVE: 0, EXPIRING: 1, EXPIRED: 2 }
       return order.map((cat) => ({
         key: cat || '__none__',
         label: cat || t('signals.indicatorNone'),
-        items: buckets
-          .get(cat)!
-          .slice()
-          .sort(
-            (a, b) => statusRank[effectiveStatus(a, now)] - statusRank[effectiveStatus(b, now)],
-          ),
+        items: byStatus(buckets.get(cat)!),
+        collapsedByDefault: false,
       }))
     }
 
+    // 按状态分组：过期组默认折叠 / by status, expired group collapsed by default
     const sBuckets: Record<EffStatus, Signal[]> = { EXPIRING: [], ACTIVE: [], EXPIRED: [] }
     for (const s of visible) sBuckets[effectiveStatus(s, now)].push(s)
     return [
-      { key: 'EXPIRING', label: t('signals.groupTitle.expiring'), items: sBuckets.EXPIRING },
-      { key: 'ACTIVE', label: t('signals.groupTitle.active'), items: sBuckets.ACTIVE },
-      { key: 'EXPIRED', label: t('signals.groupTitle.expired'), items: sBuckets.EXPIRED },
+      { key: 'EXPIRING', label: t('signals.groupTitle.expiring'), items: sBuckets.EXPIRING, collapsedByDefault: false },
+      { key: 'ACTIVE', label: t('signals.groupTitle.active'), items: sBuckets.ACTIVE, collapsedByDefault: false },
+      { key: 'EXPIRED', label: t('signals.groupTitle.expired'), items: sBuckets.EXPIRED, collapsedByDefault: true },
     ].filter((g) => g.items.length > 0)
-  }, [visible, now, t, prefs.sort])
+  }, [visible, now, t, prefs.groupBy])
+
+  // 概览统计：基于全部信号，提供全局态势 / overview stats over all signals
+  const stats = useMemo(() => {
+    let active = 0
+    let expiring = 0
+    let buy = 0
+    let sell = 0
+    let rrSum = 0
+    let rrCount = 0
+    for (const s of signals) {
+      const eff = effectiveStatus(s, now)
+      if (eff === 'EXPIRED') continue
+      active += 1
+      if (eff === 'EXPIRING') expiring += 1
+      if (s.side === 'BUY') buy += 1
+      else sell += 1
+      const rr = calcRiskReward(s.symbol, s.entry, s.stopLoss, s.takeProfit)?.rr
+      if (rr != null) {
+        rrSum += rr
+        rrCount += 1
+      }
+    }
+    return { active, expiring, buy, sell, avgRr: rrCount ? rrSum / rrCount : null }
+  }, [signals, now])
 
   const showToast = (msg: string, kind: 'success' | 'error' | 'info' = 'success', ms = 3000) => {
     if (toastTimer.current) window.clearTimeout(toastTimer.current)
@@ -664,11 +700,51 @@ export default function SignalsPage() {
 
   return (
     <div>
-      <div className="mb-6">
+      <div className="mb-5">
         <h2 className="font-display text-2xl font-bold text-slate-100">
           <span className="neon-text">{t('signals.title')}</span>
         </h2>
         <p className="mt-1 text-sm text-slate-400">{t('signals.subtitle')}</p>
+      </div>
+
+      {/* 概览统计带 / overview stats bar */}
+      <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="glass px-4 py-3">
+          <div className="text-[11px] uppercase tracking-wider text-slate-500">
+            {t('signals.stats.active')}
+          </div>
+          <div className="mt-1 font-display text-xl font-bold text-slate-100">{stats.active}</div>
+        </div>
+        <div className="glass px-4 py-3">
+          <div className="text-[11px] uppercase tracking-wider text-slate-500">
+            {t('signals.stats.bias')}
+          </div>
+          <div className="mt-1 font-display text-xl font-bold">
+            <span className="text-up">{stats.buy}</span>
+            <span className="mx-1 text-slate-600">/</span>
+            <span className="text-down">{stats.sell}</span>
+          </div>
+        </div>
+        <div className="glass px-4 py-3">
+          <div className="text-[11px] uppercase tracking-wider text-slate-500">
+            {t('signals.stats.expiring')}
+          </div>
+          <div
+            className={`mt-1 font-display text-xl font-bold ${
+              stats.expiring > 0 ? 'text-amber-400' : 'text-slate-100'
+            }`}
+          >
+            {stats.expiring}
+          </div>
+        </div>
+        <div className="glass px-4 py-3">
+          <div className="text-[11px] uppercase tracking-wider text-slate-500">
+            {t('signals.stats.avgRr')}
+          </div>
+          <div className={`mt-1 font-display text-xl font-bold ${rrTone(stats.avgRr)}`}>
+            {stats.avgRr != null ? `1:${stats.avgRr.toFixed(2)}` : '-'}
+          </div>
+        </div>
       </div>
 
       {/* 工具栏 / toolbar */}
@@ -701,30 +777,24 @@ export default function SignalsPage() {
               { value: 'EXPIRED', label: t('signals.expired') },
             ]}
           />
+          <Dropdown<GroupBy>
+            value={prefs.groupBy}
+            onChange={(v) => setPrefs((p) => ({ ...p, groupBy: v }))}
+            label={t('signals.groupByLabel')}
+            options={[
+              { value: 'none', label: t('signals.groupBy.none') },
+              { value: 'status', label: t('signals.groupBy.status') },
+              { value: 'indicator', label: t('signals.groupBy.indicator') },
+            ]}
+          />
           <Dropdown<SortKey>
             value={prefs.sort}
-            onChange={(v) =>
-              setPrefs((p) => ({
-                ...p,
-                sort: v,
-                // 选"触发指标"时自动切到分组布局，确保直观看到分类。
-                // Auto-switch to group layout when sorting by trigger so categories show.
-                layout: v === 'indicator' ? 'group' : p.layout,
-              }))
-            }
+            onChange={(v) => setPrefs((p) => ({ ...p, sort: v }))}
             label={t('signals.sortBy')}
             options={sortOptions}
           />
         </div>
         <div className="flex items-center gap-2">
-          <Segmented<Layout>
-            value={prefs.layout}
-            onChange={(v) => setPrefs((p) => ({ ...p, layout: v }))}
-            options={[
-              { value: 'group', label: t('signals.group') },
-              { value: 'flat', label: t('signals.flat') },
-            ]}
-          />
           <Segmented<ViewMode>
             value={prefs.view}
             onChange={(v) => setPrefs((p) => ({ ...p, view: v }))}
@@ -749,22 +819,42 @@ export default function SignalsPage() {
         <div className="glass flex flex-col items-center justify-center py-20 text-center">
           <p className="text-sm text-slate-400">{t('signals.noMatch')}</p>
         </div>
-      ) : prefs.layout === 'group' ? (
-        <div className="flex flex-col gap-8">
-          {groups.map((g) => (
-            <section key={g.key}>
-              <div className="mb-3 flex items-center gap-2">
-                <h3 className="font-display text-sm font-semibold uppercase tracking-wider text-slate-300">
-                  {g.label}
-                </h3>
-                <span className="chip">{g.items.length}</span>
-              </div>
-              {renderList(g.items)}
-            </section>
-          ))}
-        </div>
-      ) : (
+      ) : prefs.groupBy === 'none' ? (
         renderList(visible)
+      ) : (
+        <div className="flex flex-col gap-8">
+          {groups.map((g) => {
+            const open = openOverrides[g.key] ?? !g.collapsedByDefault
+            return (
+              <section key={g.key}>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setOpenOverrides((prev) => ({ ...prev, [g.key]: !open }))
+                  }
+                  className="mb-3 flex w-full items-center gap-2 text-left"
+                >
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    className={`shrink-0 text-slate-500 transition-transform duration-200 ${
+                      open ? 'rotate-90' : ''
+                    }`}
+                  >
+                    <path d="M9 6l6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  <h3 className="font-display text-sm font-semibold uppercase tracking-wider text-slate-300">
+                    {g.label}
+                  </h3>
+                  <span className="chip">{g.items.length}</span>
+                </button>
+                {open && renderList(g.items)}
+              </section>
+            )
+          })}
+        </div>
       )}
 
       {active && (

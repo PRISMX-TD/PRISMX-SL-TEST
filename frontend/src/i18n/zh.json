@@ -110,6 +110,18 @@
     "all": "全部",
     "group": "分组",
     "flat": "平铺",
+    "groupByLabel": "分组",
+    "groupBy": {
+      "none": "不分组",
+      "status": "按状态",
+      "indicator": "按指标"
+    },
+    "stats": {
+      "active": "有效信号",
+      "bias": "买 / 卖",
+      "expiring": "即将到期",
+      "avgRr": "平均风险回报"
+    },
     "viewCard": "卡片",
     "viewTable": "表格",
     "sort": {
