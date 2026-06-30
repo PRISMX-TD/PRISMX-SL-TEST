@@ -135,6 +135,10 @@ function FocusView({
 }) {
   const { t } = useTranslation()
   const [focusIdx, setFocusIdx] = useState(0)
+  // 其他活跃信号的筛选与排序 / filter & sort for the other-active list
+  const [sideF, setSideF] = useState<'ALL' | 'LONG' | 'SHORT'>('ALL')
+  const [statusF, setStatusF] = useState<'ALL' | 'ACTIVE' | 'EXPIRING'>('ALL')
+  const [sortF, setSortF] = useState<'latest' | 'expiry' | 'rr'>('latest')
 
   const idx = Math.min(focusIdx, Math.max(0, entries.length - 1))
   const cur = entries[idx]
@@ -167,6 +171,35 @@ function FocusView({
   const others = entries
     .map((e, i) => ({ e, i }))
     .filter(({ e, i }) => i !== idx && e.state !== 'WATCH' && e.signal)
+
+  // 即将到期数量（剩余 ≤ 阈值）/ count of signals expiring soon
+  const expiringCount = others.filter(
+    ({ e }) => effectiveStatus(e.signal!, now) === 'EXPIRING',
+  ).length
+
+  // 应用方向 / 状态筛选 + 排序 / apply side/status filter then sort
+  const visibleOthers = others
+    .filter(({ e }) => {
+      if (sideF !== 'ALL' && e.state !== sideF) return false
+      if (statusF !== 'ALL' && effectiveStatus(e.signal!, now) !== statusF) return false
+      return true
+    })
+    .sort((a, b) => {
+      const sa = a.e.signal!
+      const sb = b.e.signal!
+      if (sortF === 'rr') {
+        const ra = calcRiskReward(sa.symbol, sa.entry, sa.stopLoss, sa.takeProfit)?.rr ?? -1
+        const rb = calcRiskReward(sb.symbol, sb.entry, sb.stopLoss, sb.takeProfit)?.rr ?? -1
+        return rb - ra
+      }
+      if (sortF === 'expiry') {
+        return (
+          (calcCountdown(sa.expireAt, SIGNAL_LIFESPAN_MS, now)?.remainMs ?? 0) -
+          (calcCountdown(sb.expireAt, SIGNAL_LIFESPAN_MS, now)?.remainMs ?? 0)
+        )
+      }
+      return new Date(sb.createdAt).getTime() - new Date(sa.createdAt).getTime()
+    })
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -281,8 +314,52 @@ function FocusView({
             </h3>
             <span className="chip">{others.length}</span>
           </div>
+
+          {/* 筛选条：即将到期 / 方向 / 状态 / 排序 / filter bar */}
+          <div className="mb-3 flex flex-wrap items-center gap-2 text-xs">
+            <span
+              className={`rounded-full border px-3 py-1.5 ${
+                expiringCount > 0
+                  ? 'border-amber-400/30 bg-amber-400/10 text-amber-300'
+                  : 'border-white/10 bg-white/5 text-slate-400'
+              }`}
+            >
+              {t('signals.stats.expiring')} {expiringCount}
+            </span>
+            <button
+              type="button"
+              onClick={() => setSideF((s) => (s === 'ALL' ? 'LONG' : s === 'LONG' ? 'SHORT' : 'ALL'))}
+              className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-slate-300"
+            >
+              {t('signals.filterSide')}{' '}
+              <span className="text-slate-100">
+                {sideF === 'ALL' ? t('signals.all') : sideF === 'LONG' ? t('signals.focus.long') : t('signals.focus.short')}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusF((s) => (s === 'ALL' ? 'ACTIVE' : s === 'ACTIVE' ? 'EXPIRING' : 'ALL'))}
+              className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-slate-300"
+            >
+              {t('signals.filterStatus')}{' '}
+              <span className="text-slate-100">
+                {statusF === 'ALL' ? t('signals.all') : statusF === 'ACTIVE' ? t('signals.active') : t('signals.expiringSoon')}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setSortF((s) => (s === 'latest' ? 'expiry' : s === 'expiry' ? 'rr' : 'latest'))}
+              className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-slate-300"
+            >
+              {t('signals.sortBy')}{' '}
+              <span className="text-slate-100">
+                {sortF === 'latest' ? t('signals.sort.latest') : sortF === 'expiry' ? t('signals.sort.expiry') : t('signals.sort.rr')}
+              </span>
+            </button>
+          </div>
+
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3">
-            {others.map(({ e, i }) => {
+            {visibleOthers.map(({ e, i }) => {
               const oTone = FOCUS_TONE[e.state]
               const sig = e.signal!
               const oRr = calcRiskReward(sig.symbol, sig.entry, sig.stopLoss, sig.takeProfit)
