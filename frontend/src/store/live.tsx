@@ -21,6 +21,26 @@ interface LiveContextValue {
 
 const LiveContext = createContext<LiveContextValue | null>(null)
 
+// 失效信号最多保留的条数 / max number of expired signals to keep
+const MAX_EXPIRED = 30
+
+// 保留全部有效信号，过期信号只保留最新的 MAX_EXPIRED 条（按生成时间倒序）。
+// Keep all active signals; cap expired ones to the newest MAX_EXPIRED (by created time).
+function capExpired(signals: Signal[]): Signal[] {
+  let kept = 0
+  const ts = (s: Signal) => (s.createdAt ? new Date(s.createdAt).getTime() : 0)
+  // 先按生成时间倒序，保证保留的是最新的过期信号 / newest-first so we keep the latest expired
+  const ordered = [...signals].sort((a, b) => ts(b) - ts(a))
+  const limited = ordered.filter((s) => {
+    if (s.status !== 'EXPIRED') return true
+    kept += 1
+    return kept <= MAX_EXPIRED
+  })
+  // 恢复原有顺序（保留进入数组的相对次序）/ restore the original ordering
+  const allow = new Set(limited)
+  return signals.filter((s) => allow.has(s))
+}
+
 export function LiveProvider({ children }: { children: ReactNode }) {
   const [signals, setSignals] = useState<Signal[]>([])
   const [orders, setOrders] = useState<Order[]>([])
@@ -36,7 +56,7 @@ export function LiveProvider({ children }: { children: ReactNode }) {
       eaApi.status().catch(() => ({ online: false, mt5Login: null }) as EAStatus),
       accountApi.list().catch(() => ({ accounts: [] })),
     ])
-    setSignals(sig.signals)
+    setSignals(capExpired(sig.signals))
     setOrders(ord.orders)
     setEaStatus(st)
     setAccounts(acc.accounts)
@@ -61,13 +81,13 @@ export function LiveProvider({ children }: { children: ReactNode }) {
   const handleMessage = useCallback((msg: WSMessage) => {
     switch (msg.type) {
       case 'SIGNAL_NEW':
-        setSignals((prev) => [msg.data as Signal, ...prev].slice(0, 50))
+        setSignals((prev) => capExpired([msg.data as Signal, ...prev]))
         break
       case 'SIGNAL_EXPIRED': {
         // 信号到期：置为 EXPIRED，前端置灰并禁用下单 / mark expired, grey out & disable
         const { id } = msg.data as { id: string }
         setSignals((prev) =>
-          prev.map((s) => (s.id === id ? { ...s, status: 'EXPIRED' as const } : s))
+          capExpired(prev.map((s) => (s.id === id ? { ...s, status: 'EXPIRED' as const } : s)))
         )
         break
       }

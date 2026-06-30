@@ -521,10 +521,18 @@ export default function SignalsPage() {
         }
         buckets.get(cat)!.push(s)
       }
+      // 组内按状态优先级排序：有效 > 即将到期 > 已过期，避免过期信号排在前面。
+      // Within each bucket, order by status: active > expiring > expired.
+      const statusRank: Record<EffStatus, number> = { ACTIVE: 0, EXPIRING: 1, EXPIRED: 2 }
       return order.map((cat) => ({
         key: cat || '__none__',
         label: cat || t('signals.indicatorNone'),
-        items: buckets.get(cat)!,
+        items: buckets
+          .get(cat)!
+          .slice()
+          .sort(
+            (a, b) => statusRank[effectiveStatus(a, now)] - statusRank[effectiveStatus(b, now)],
+          ),
       }))
     }
 
