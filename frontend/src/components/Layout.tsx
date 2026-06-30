@@ -49,6 +49,15 @@ function TabIcon({ name }: { name: string }) {
           <path d="M3 17l5-6 4 4 5-7 4 5" />
         </svg>
       )
+    case 'charts':
+      return (
+        <svg className={c} viewBox="0 0 24 24" {...p}>
+          <path d="M3 3v18h18" />
+          <rect x="7" y="10" width="3" height="7" rx="0.5" />
+          <rect x="13" y="6" width="3" height="11" rx="0.5" />
+          <path d="M8.5 10V7.5M8.5 17v2M14.5 6V4M14.5 17v2" />
+        </svg>
+      )
     case 'bind':
       return (
         <svg className={c} viewBox="0 0 24 24" {...p}>
@@ -121,6 +130,7 @@ export default function Layout() {
 
   const tabs = [
     { to: '/app', icon: 'signals', label: t('nav.signals') },
+    { to: '/charts', icon: 'charts', label: t('nav.charts') },
     { to: '/bind', icon: 'bind', label: t('nav.bind') },
     { to: '/orders', icon: 'orders', label: t('nav.orders') },
     { to: '/account', icon: 'account', label: t('nav.account') },
@@ -147,6 +157,7 @@ export default function Layout() {
 
             <nav className="hidden items-center gap-1 sm:flex">
               <NavItem to="/app" label={t('nav.signals')} />
+              <NavItem to="/charts" label={t('nav.charts')} />
               <NavItem to="/bind" label={t('nav.bind')} />
               <NavItem to="/orders" label={t('nav.orders')} />
               <NavItem to="/account" label={t('nav.account')} />

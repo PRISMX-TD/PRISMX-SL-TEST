@@ -4,6 +4,7 @@ import Layout from './components/Layout'
 import LandingPage from './pages/LandingPage'
 import LoginPage from './pages/LoginPage'
 import SignalsPage from './pages/SignalsPage'
+import ChartsPage from './pages/ChartsPage'
 import BindPage from './pages/BindPage'
 import OrdersPage from './pages/OrdersPage'
 import DownloadPage from './pages/DownloadPage'
@@ -37,6 +38,7 @@ export default function App() {
             }
           >
             <Route path="/app" element={<SignalsPage />} />
+            <Route path="/charts" element={<ChartsPage />} />
             <Route path="/bind" element={<BindPage />} />
             <Route path="/orders" element={<OrdersPage />} />
             <Route path="/account" element={<AccountPage />} />

@@ -5,6 +5,7 @@
   },
   "nav": {
     "signals": "Signals",
+    "charts": "Charts",
     "bind": "Connect MT5",
     "orders": "Orders",
     "download": "Download Bridge",
@@ -193,6 +194,13 @@
     "notifBlocked": "Notifications blocked by browser; enable in browser settings",
     "notifError": "Failed to update notification settings",
     "notifProcessing": "Processing…"
+  },
+  "charts": {
+    "title": "Charts",
+    "subtitle": "Live candlestick view; symbol follows your positions and signals",
+    "symbol": "Symbol",
+    "tvLocale": "en",
+    "disclaimer": "Chart data is provided by TradingView. The quote source may differ slightly from your broker and is for reference only."
   },
   "orders": {
     "title": "Orders & Receipts",
