@@ -1,4 +1,5 @@
 """安全相关：密码哈希、JWT、Token 生成 / Security: password hashing, JWT, token generation."""
+import logging
 import secrets
 from datetime import datetime, timedelta, timezone
 
@@ -6,6 +7,8 @@ import bcrypt
 from jose import JWTError, jwt
 
 from app.core.config import settings
+
+logger = logging.getLogger("prismx.security")
 
 
 def _to_72(password: str) -> bytes:
@@ -75,7 +78,9 @@ def verify_google_id_token(credential: str) -> dict | None:
         if not info.get("email") or not info.get("email_verified"):
             return None
         return info
-    except Exception:
+    except Exception as exc:
+        # 临时日志：定位 Google 校验失败根因 / temporary log to diagnose verification failure
+        logger.warning("Google ID token verification failed: %r", exc)
         return None
 
 
