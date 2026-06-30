@@ -124,6 +124,7 @@
       "active": "Active",
       "expired": "Expired"
     },
+    "indicatorNone": "No indicator",
     "colSymbol": "Symbol",
     "colSide": "Side",
     "colEntry": "Entry",

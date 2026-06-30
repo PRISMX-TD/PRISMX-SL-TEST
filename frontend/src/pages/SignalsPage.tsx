@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLive } from '../store/live'
+import { useAuth } from '../store/auth'
 import { orderApi } from '../api/client'
 import { clientOrderId, fmtTime, calcRiskReward, calcCountdown } from '../api/utils'
 import type { Signal } from '../api/types'
@@ -26,12 +27,18 @@ interface Prefs {
   sort: SortKey
 }
 
-const PREFS_KEY = 'prismx.signals.prefs'
+const PREFS_KEY_BASE = 'prismx.signals.prefs'
 
-function loadPrefs(): Prefs {
+// 按用户拆分偏好存储键，未登录用 guest，做到每个用户设置独立。
+// Namespace the prefs key per user (guest if none) so each user's settings are independent.
+function prefsKey(userId: string | null | undefined): string {
+  return `${PREFS_KEY_BASE}.${userId || 'guest'}`
+}
+
+function loadPrefs(userId: string | null | undefined): Prefs {
   const fallback: Prefs = { layout: 'group', view: 'card', sort: 'latest' }
   try {
-    const raw = localStorage.getItem(PREFS_KEY)
+    const raw = localStorage.getItem(prefsKey(userId))
     if (!raw) return fallback
     return { ...fallback, ...(JSON.parse(raw) as Partial<Prefs>) }
   } catch {
@@ -81,6 +88,19 @@ function useNewSignalIds(signals: Signal[]): Set<string> {
   }, [signals])
 
   return newIds
+}
+
+// 规范化指标文本用于分类：剥离动态数值（如 RSI=44.7）让同策略信号聚成一类。
+// Normalize indicator for grouping: strip dynamic numbers (e.g. RSI=44.7) so
+// signals from the same strategy cluster into one category.
+function indicatorCategory(indicator: string | null | undefined): string {
+  const raw = (indicator || '').trim()
+  if (!raw) return ''
+  return raw
+    .replace(/RSI\s*=\s*[\d.]+/gi, 'RSI') // RSI=44.7 -> RSI
+    .replace(/\s*,\s*/g, ', ')
+    .replace(/\s+/g, ' ')
+    .trim()
 }
 
 // 信号的有效状态（结合实时倒计时）/ effective status combining live countdown
@@ -421,6 +441,7 @@ function Dropdown<T extends string>({
 export default function SignalsPage() {
   const { t } = useTranslation()
   const { signals, anyOnline, accounts, loaded, refreshAll } = useLive()
+  const { user } = useAuth()
   const now = useNow(1000)
   const newIds = useNewSignalIds(signals)
 
@@ -432,16 +453,21 @@ export default function SignalsPage() {
   const [search, setSearch] = useState('')
   const [sideFilter, setSideFilter] = useState<SideFilter>('ALL')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL')
-  const [prefs, setPrefs] = useState<Prefs>(loadPrefs)
+  const [prefs, setPrefs] = useState<Prefs>(() => loadPrefs(user?.id))
 
-  // 持久化视图偏好 / persist view prefs
+  // 用户切换时按该用户上次保存的偏好恢复 / restore each user's own saved prefs on switch
+  useEffect(() => {
+    setPrefs(loadPrefs(user?.id))
+  }, [user?.id])
+
+  // 持久化视图偏好到当前用户的存储键 / persist prefs under the current user's key
   useEffect(() => {
     try {
-      localStorage.setItem(PREFS_KEY, JSON.stringify(prefs))
+      localStorage.setItem(prefsKey(user?.id), JSON.stringify(prefs))
     } catch {
       // 忽略存储失败 / ignore storage errors
     }
-  }, [prefs])
+  }, [prefs, user?.id])
 
   // 筛选 + 排序 / filter + sort
   const visible = useMemo(() => {
@@ -479,16 +505,37 @@ export default function SignalsPage() {
     return sorted
   }, [signals, search, sideFilter, statusFilter, prefs.sort, now])
 
-  // 分组：即将到期 / 活跃 / 已过期 / group buckets
+  // 分组：排序为"触发指标"时按指标分类，否则按状态（即将到期/活跃/已过期）。
+  // Group by indicator category when sorting by trigger; otherwise by status.
   const groups = useMemo(() => {
-    const buckets: Record<EffStatus, Signal[]> = { EXPIRING: [], ACTIVE: [], EXPIRED: [] }
-    for (const s of visible) buckets[effectiveStatus(s, now)].push(s)
+    if (prefs.sort === 'indicator') {
+      // 按指标类别聚类，保持 visible 的指标排序顺序；空指标归到末尾。
+      // Cluster by indicator category, preserving visible's order; empty sinks to the end.
+      const order: string[] = []
+      const buckets = new Map<string, Signal[]>()
+      for (const s of visible) {
+        const cat = indicatorCategory(s.indicator)
+        if (!buckets.has(cat)) {
+          buckets.set(cat, [])
+          order.push(cat)
+        }
+        buckets.get(cat)!.push(s)
+      }
+      return order.map((cat) => ({
+        key: cat || '__none__',
+        label: cat || t('signals.indicatorNone'),
+        items: buckets.get(cat)!,
+      }))
+    }
+
+    const sBuckets: Record<EffStatus, Signal[]> = { EXPIRING: [], ACTIVE: [], EXPIRED: [] }
+    for (const s of visible) sBuckets[effectiveStatus(s, now)].push(s)
     return [
-      { key: 'EXPIRING' as const, label: t('signals.groupTitle.expiring'), items: buckets.EXPIRING },
-      { key: 'ACTIVE' as const, label: t('signals.groupTitle.active'), items: buckets.ACTIVE },
-      { key: 'EXPIRED' as const, label: t('signals.groupTitle.expired'), items: buckets.EXPIRED },
+      { key: 'EXPIRING', label: t('signals.groupTitle.expiring'), items: sBuckets.EXPIRING },
+      { key: 'ACTIVE', label: t('signals.groupTitle.active'), items: sBuckets.ACTIVE },
+      { key: 'EXPIRED', label: t('signals.groupTitle.expired'), items: sBuckets.EXPIRED },
     ].filter((g) => g.items.length > 0)
-  }, [visible, now, t])
+  }, [visible, now, t, prefs.sort])
 
   const showToast = (msg: string, kind: 'success' | 'error' | 'info' = 'success', ms = 3000) => {
     if (toastTimer.current) window.clearTimeout(toastTimer.current)
@@ -648,7 +695,15 @@ export default function SignalsPage() {
           />
           <Dropdown<SortKey>
             value={prefs.sort}
-            onChange={(v) => setPrefs((p) => ({ ...p, sort: v }))}
+            onChange={(v) =>
+              setPrefs((p) => ({
+                ...p,
+                sort: v,
+                // 选"触发指标"时自动切到分组布局，确保直观看到分类。
+                // Auto-switch to group layout when sorting by trigger so categories show.
+                layout: v === 'indicator' ? 'group' : p.layout,
+              }))
+            }
             label={t('signals.sortBy')}
             options={sortOptions}
           />

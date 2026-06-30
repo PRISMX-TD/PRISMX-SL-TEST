@@ -124,6 +124,7 @@
       "active": "活跃",
       "expired": "已过期"
     },
+    "indicatorNone": "未标注指标",
     "colSymbol": "品种",
     "colSide": "方向",
     "colEntry": "入场",
