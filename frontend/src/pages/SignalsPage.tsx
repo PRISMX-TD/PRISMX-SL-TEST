@@ -281,7 +281,7 @@ function FocusView({
             </h3>
             <span className="chip">{others.length}</span>
           </div>
-          <div className="flex flex-col gap-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3">
             {others.map(({ e, i }) => {
               const oTone = FOCUS_TONE[e.state]
               const sig = e.signal!
@@ -369,7 +369,7 @@ function FocusView({
                         onClick={() => onTrade(sig)}
                         className="btn-primary shrink-0 rounded-xl px-6 py-2.5 text-sm font-semibold"
                       >
-                        {t('common.trade')}
+                        {t('signals.trade')}
                       </button>
                     </div>
                   </div>
