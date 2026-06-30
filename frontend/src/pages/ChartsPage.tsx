@@ -97,7 +97,7 @@ export default function ChartsPage() {
   }, [tvSymbol, interval, t])
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex flex-col">
       <div className="mb-5">
         <h2 className="font-display text-2xl font-bold text-slate-100">
           <span className="neon-text">{t('charts.title')}</span>
@@ -141,12 +141,12 @@ export default function ChartsPage() {
         </div>
       </div>
 
-      {/* 图表容器：自适应高度，移动端给底部 Tab 栏留空间 */}
-      {/* Chart container: responsive height, leaves room for the mobile tab bar */}
-      <div className="glass relative flex-1 overflow-hidden p-1.5">
+      {/* 图表容器：跟随视口高度自适应，移动端给底部 Tab 栏留空间 */}
+      {/* Chart container: viewport-relative height, leaves room for the mobile tab bar */}
+      <div className="glass relative overflow-hidden p-1.5 h-[70vh] min-h-[420px] sm:h-[calc(100vh-15rem)]">
         <div
           ref={containerRef}
-          className="tradingview-widget-container h-[60vh] w-full sm:h-[calc(100vh-16rem)]"
+          className="tradingview-widget-container h-full w-full"
         />
       </div>
 
