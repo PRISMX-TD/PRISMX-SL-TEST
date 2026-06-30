@@ -191,7 +191,8 @@
     "notifNoCategories": "No indicator categories yet, run the signal engine first",
     "notifPermissionDenied": "Notification permission denied; enable in browser settings",
     "notifBlocked": "Notifications blocked by browser; enable in browser settings",
-    "notifError": "Failed to update notification settings"
+    "notifError": "Failed to update notification settings",
+    "notifProcessing": "Processing…"
   },
   "orders": {
     "title": "Orders & Receipts",

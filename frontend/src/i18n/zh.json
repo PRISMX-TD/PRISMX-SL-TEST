@@ -191,7 +191,8 @@
     "notifNoCategories": "暂无指标类别，信号引擎运行后将自动出现",
     "notifPermissionDenied": "通知权限被拒绝，请在浏览器设置中开启",
     "notifBlocked": "通知已被浏览器阻止，请在浏览器设置中开启",
-    "notifError": "通知设置失败"
+    "notifError": "通知设置失败",
+    "notifProcessing": "处理中…"
   },
   "orders": {
     "title": "订单与回执",

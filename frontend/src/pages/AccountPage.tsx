@@ -1,5 +1,5 @@
 // 账户详情页 / Account page: profile, MT5 accounts, password, notifications
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { userApi, notificationApi, pushApi } from "../api/client"
 import { fmtTime } from "../api/utils"
@@ -23,9 +23,15 @@ export default function AccountPage() {
   const [allCats, setAllCats] = useState<string[]>([])
   const [notifMsg, setNotifMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null)
   const [notifLoading, setNotifLoading] = useState(false)
+  // 分类偏好防抖落库 / debounce saving category prefs
+  const catSaveTimer = useRef<number | undefined>(undefined)
 
   useEffect(() => {
     load()
+    // 卸载时清理未触发的防抖定时器 / clear pending debounce on unmount
+    return () => {
+      if (catSaveTimer.current) window.clearTimeout(catSaveTimer.current)
+    }
   }, [])
 
   async function load() {
@@ -118,14 +124,21 @@ export default function AccountPage() {
     }
   }
 
-  async function handleNotifCatToggle(cat: string, on: boolean) {
-    const next = on ? [...notifCats, cat] : notifCats.filter((c) => c !== cat)
-    try {
-      await notificationApi.putPrefs(notifEnabled, next)
-      setNotifCats(next)
-    } catch {
-      // ignore
-    }
+  function handleNotifCatToggle(cat: string, on: boolean) {
+    // 乐观更新：先即时更新 UI，再防抖落库 / optimistic UI then debounced save
+    setNotifMsg(null)
+    setNotifCats((prev) => {
+      const next = on ? [...prev, cat] : prev.filter((c) => c !== cat)
+      if (catSaveTimer.current) window.clearTimeout(catSaveTimer.current)
+      catSaveTimer.current = window.setTimeout(() => {
+        notificationApi.putPrefs(notifEnabled, next).catch(() => {
+          // 落库失败则回滚该项 / roll back this toggle on failure
+          setNotifCats((cur) => (on ? cur.filter((c) => c !== cat) : [...cur, cat]))
+          setNotifMsg({ kind: "err", text: t("account.notifError") })
+        })
+      }, 400)
+      return next
+    })
   }
 
   if (loading) {
@@ -252,10 +265,17 @@ export default function AccountPage() {
                     onChange={(e) => handleNotifToggle(e.target.checked)}
                     className="peer sr-only"
                   />
-                  <div className="h-6 w-11 rounded-full bg-white/10 transition peer-checked:bg-prism-500" />
-                  <div className="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition peer-checked:translate-x-5" />
+                  <div className="h-6 w-11 rounded-full bg-white/10 transition peer-checked:bg-prism-500 peer-disabled:opacity-60" />
+                  <div className="absolute left-0.5 top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-white shadow transition peer-checked:translate-x-5">
+                    {notifLoading && (
+                      <span className="h-3 w-3 animate-spin rounded-full border-2 border-prism-500/40 border-t-prism-600" />
+                    )}
+                  </div>
                 </label>
                 <span className="text-sm text-slate-100">{t("account.notifEnable")}</span>
+                {notifLoading && (
+                  <span className="text-xs text-slate-500">{t("account.notifProcessing")}</span>
+                )}
               </div>
               {notifEnabled && (
                 <div className="space-y-2 pl-1">
