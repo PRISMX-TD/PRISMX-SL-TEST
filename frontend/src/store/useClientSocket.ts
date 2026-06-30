@@ -1,7 +1,7 @@
 // 前端 WebSocket Hook：接收信号/订单/EA 状态推送。
 // Client WebSocket hook: receive signal/order/EA-status pushes.
 import { useEffect, useRef } from 'react'
-import { getToken, API_BASE, triggerUnauthorized } from '../api/client'
+import { getToken, API_BASE } from '../api/client'
 import type { WSMessage } from '../api/types'
 
 export function useClientSocket(onMessage: (msg: WSMessage) => void) {
@@ -38,11 +38,16 @@ export function useClientSocket(onMessage: (msg: WSMessage) => void) {
       ws.onmessage = (ev) => {
         try {
           const msg = JSON.parse(ev.data) as WSMessage
-          // 鉴权失败：token 失效，停止重连并登出，避免静默重连死循环。
-          // Auth failed: token invalid; stop reconnecting and sign out to avoid a silent loop.
+          // WS 鉴权失败：只停止重连，不强制登出。
+          // WS 仅是实时推送通道，其鉴权失败不应清除登录态——登录态是否失效
+          // 应只由 REST 的 401 决定（见 client.ts）。否则一旦 WS 协议/部署不一致，
+          // 会把用户直接踢回登录页。
+          // WS auth failure: just stop reconnecting; do NOT sign the user out.
+          // The WS is only a push channel; session validity is decided solely by
+          // REST 401s. Otherwise a WS protocol/deploy mismatch would kick the
+          // user back to the login page.
           if (msg.type === 'AUTH_FAIL') {
             closed = true
-            triggerUnauthorized()
             ws?.close()
             return
           }
