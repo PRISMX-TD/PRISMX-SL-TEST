@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLive } from '../store/live'
 import { orderApi } from '../api/client'
-import { clientOrderId, calcRiskReward, calcCountdown } from '../api/utils'
+import { clientOrderId, fmtTime, calcRiskReward, calcCountdown } from '../api/utils'
 import type { Signal } from '../api/types'
 import OrderModal from '../components/OrderModal'
 
@@ -284,34 +284,96 @@ function FocusView({
           <div className="flex flex-col gap-2">
             {others.map(({ e, i }) => {
               const oTone = FOCUS_TONE[e.state]
-              const oRr = calcRiskReward(e.signal!.symbol, e.signal!.entry, e.signal!.stopLoss, e.signal!.takeProfit)
-              const isNew = newIds.has(e.signal!.id)
+              const sig = e.signal!
+              const oRr = calcRiskReward(sig.symbol, sig.entry, sig.stopLoss, sig.takeProfit)
+              const isNew = newIds.has(sig.id)
+              const cd = calcCountdown(sig.expireAt, SIGNAL_LIFESPAN_MS, now)
+              const sideTag = sig.side === 'BUY' ? t('common.buy') : t('common.sell')
               return (
-                <button
-                  key={e.symbol}
-                  type="button"
-                  onClick={() => setFocusIdx(i)}
-                  className={`glass flex w-full items-center gap-3 px-3 py-2.5 text-left ${isNew ? 'ring-2 ring-prism-500/70 animate-glow-pulse' : ''}`}
-                >
-                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg" style={{ background: FOCUS_DOT[e.state] + '1f' }}>
-                    <span className="h-2 w-2 rounded-full" style={{ background: FOCUS_DOT[e.state] }} />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-slate-100">{e.symbol}</span>
-                      <span className={`tag ${oTone.chipBg}`}>{stateLabel(e.state)}</span>
+                <div key={e.symbol}>
+                  {/* 手机版：紧凑行 / mobile: compact row */}
+                  <button
+                    type="button"
+                    onClick={() => setFocusIdx(i)}
+                    className={`glass flex w-full items-center gap-3 px-3 py-2.5 text-left sm:hidden ${isNew ? 'ring-2 ring-prism-500/70 animate-glow-pulse' : ''}`}
+                  >
+                    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg" style={{ background: FOCUS_DOT[e.state] + '1f' }}>
+                      <span className="h-2 w-2 rounded-full" style={{ background: FOCUS_DOT[e.state] }} />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-slate-100">{e.symbol}</span>
+                        <span className={`tag ${oTone.chipBg}`}>{stateLabel(e.state)}</span>
+                      </div>
+                      <div className="truncate text-[11px] text-slate-500">{sig.indicator || '-'}</div>
                     </div>
-                    <div className="truncate text-[11px] text-slate-500">{e.signal!.indicator || '-'}</div>
+                    <div className="text-right">
+                      <div className={`font-mono text-sm font-bold ${rrTone(oRr?.rr ?? null)}`}>
+                        {oRr?.rr != null ? `1:${oRr.rr.toFixed(2)}` : '-'}
+                      </div>
+                      <div className="font-mono text-[10px] text-amber-400">{cd?.text ?? '-'}</div>
+                    </div>
+                  </button>
+
+                  {/* 桌面版：完整卡片 / desktop: full card */}
+                  <div
+                    className={`glass hidden p-4 sm:block ${isNew ? 'ring-2 ring-prism-500/70 animate-glow-pulse' : ''}`}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="font-display text-lg font-bold text-slate-100">{e.symbol}</span>
+                        <span className={`tag ${oTone.chipBg}`}>{sideTag}</span>
+                      </div>
+                      <div className="text-right">
+                        <div className={`font-display text-xl font-bold ${rrTone(oRr?.rr ?? null)}`}>
+                          {oRr?.rr != null ? `1:${oRr.rr.toFixed(2)}` : '-'}
+                        </div>
+                        <div className="text-[10px] uppercase tracking-wider text-slate-500">{t('signals.focus.rrLabel')}</div>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 grid grid-cols-3 gap-2">
+                      <div className="rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2 text-center">
+                        <div className="text-[10px] uppercase tracking-wider text-slate-500">{t('signals.colEntry')}</div>
+                        <div className="mt-0.5 font-mono text-sm font-semibold text-slate-100">{sig.entry ?? '-'}</div>
+                      </div>
+                      <div className="rounded-xl border border-down/15 bg-down/5 px-3 py-2 text-center">
+                        <div className="text-[10px] uppercase tracking-wider text-slate-500">{t('signals.colSl')}</div>
+                        <div className="mt-0.5 font-mono text-sm font-semibold text-down">{sig.stopLoss ?? '-'}</div>
+                      </div>
+                      <div className="rounded-xl border border-up/15 bg-up/5 px-3 py-2 text-center">
+                        <div className="text-[10px] uppercase tracking-wider text-slate-500">{t('signals.colTp')}</div>
+                        <div className="mt-0.5 font-mono text-sm font-semibold text-up">{sig.takeProfit ?? '-'}</div>
+                      </div>
+                    </div>
+
+                    <div className="mt-3">
+                      <div className="mb-1 flex items-center justify-between text-[11px]">
+                        <span className="uppercase tracking-wider text-slate-500">{t('signals.focus.remainingTtl')}</span>
+                        <span className="font-mono text-amber-400">{cd?.text ?? '-'}</span>
+                      </div>
+                      <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
+                        <div
+                          className="h-full rounded-full"
+                          style={{ width: `${Math.round((cd?.fraction ?? 0) * 100)}%`, background: 'linear-gradient(90deg,#7c5cff,#2fe6a0)' }}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="mt-3 flex items-center justify-between">
+                      <div className="min-w-0">
+                        <div className="truncate text-sm text-slate-300">{sig.indicator || '-'}</div>
+                        <div className="text-[10px] text-slate-600">{fmtTime(sig.createdAt)}</div>
+                      </div>
+                      <button
+                        onClick={() => onTrade(sig)}
+                        className="btn-primary shrink-0 rounded-xl px-6 py-2.5 text-sm font-semibold"
+                      >
+                        {t('common.trade')}
+                      </button>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <div className={`font-mono text-sm font-bold ${rrTone(oRr?.rr ?? null)}`}>
-                      {oRr?.rr != null ? `1:${oRr.rr.toFixed(2)}` : '-'}
-                    </div>
-                    <div className="font-mono text-[10px] text-amber-400">
-                      {calcCountdown(e.signal!.expireAt, SIGNAL_LIFESPAN_MS, now)?.text ?? '-'}
-                    </div>
-                  </div>
-                </button>
+                </div>
               )
             })}
           </div>
