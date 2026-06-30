@@ -177,6 +177,13 @@ export const userApi = {
       method: 'POST',
       body: JSON.stringify({ old_password: oldPassword, new_password: newPassword }),
     }),
+  // 跨设备同步的界面偏好 / cross-device UI prefs
+  getPrefs: () => request<{ data: Record<string, unknown> }>('/auth/prefs'),
+  putPrefs: (data: Record<string, unknown>) =>
+    request<{ data: Record<string, unknown> }>('/auth/prefs', {
+      method: 'PUT',
+      body: JSON.stringify({ data }),
+    }),
 }
 
 // 通知 / Notifications

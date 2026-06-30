@@ -157,3 +157,17 @@ class PushSubscription(Base):
     keys_p256dh = Column(String, nullable=False)
     keys_auth = Column(String, nullable=False)
     created_at = Column(DateTime, default=_now)
+
+
+class UserPref(Base):
+    """用户通用偏好（跨设备同步），每个用户一条 JSON 文档。
+    Generic per-user preferences (cross-device sync), one JSON document per user.
+    用于信号面板等界面设置的云端同步 / used to sync UI settings like the signals panel.
+    """
+    __tablename__ = "user_prefs"
+
+    id = Column(String, primary_key=True, default=_uuid)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False, unique=True, index=True)
+    # 偏好 JSON 文档（按命名空间存放，如 {"signals": {...}}）/ prefs JSON keyed by namespace
+    data = Column(Text, default="{}")
+    updated_at = Column(DateTime, default=_now, onupdate=_now)

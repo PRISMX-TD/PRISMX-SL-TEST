@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLive } from '../store/live'
 import { useAuth } from '../store/auth'
-import { orderApi } from '../api/client'
+import { orderApi, userApi } from '../api/client'
 import { clientOrderId, fmtTime, calcRiskReward, calcCountdown } from '../api/utils'
 import type { Signal } from '../api/types'
 import OrderModal from '../components/OrderModal'
@@ -461,19 +461,60 @@ export default function SignalsPage() {
   // 用户手动展开/收起的分组（覆盖默认折叠）/ user-toggled groups overriding defaults
   const [openOverrides, setOpenOverrides] = useState<Record<string, boolean>>({})
 
-  // 用户切换时按该用户上次保存的偏好恢复 / restore each user's own saved prefs on switch
+  // 服务端偏好同步控制 / server-prefs sync control
+  const prefsSaveTimer = useRef<number | undefined>(undefined)
+  const hydratingPrefs = useRef(false) // 水合期间不回写服务端 / skip save while hydrating
+
+  // 用户切换时：先用本地缓存即时恢复（无闪烁），再从服务端拉取覆盖（跨设备同步）。
+  // On user switch: restore from local cache first (no flicker), then hydrate from server.
   useEffect(() => {
     setPrefs(loadPrefs(user?.id))
+    if (!user?.id) return
+    let cancelled = false
+    userApi
+      .getPrefs()
+      .then((res) => {
+        const remote = res.data?.signals as Partial<Prefs> | undefined
+        if (cancelled || !remote) return
+        hydratingPrefs.current = true
+        setPrefs((p) => ({ ...p, ...remote }))
+      })
+      .catch(() => {
+        // 服务端不可用时退回本地即可 / fall back to local on failure
+      })
+    return () => {
+      cancelled = true
+    }
   }, [user?.id])
 
-  // 持久化视图偏好到当前用户的存储键 / persist prefs under the current user's key
+  // 偏好变化：本地即时持久化（无闪烁）+ 防抖同步到服务端（跨设备）。
+  // On prefs change: persist locally immediately + debounce-sync to server.
   useEffect(() => {
     try {
       localStorage.setItem(prefsKey(user?.id), JSON.stringify(prefs))
     } catch {
       // 忽略存储失败 / ignore storage errors
     }
+    // 来自服务端水合的这次变化不需要回写 / don't echo a server-hydrated change back
+    if (hydratingPrefs.current) {
+      hydratingPrefs.current = false
+      return
+    }
+    if (!user?.id) return
+    if (prefsSaveTimer.current) window.clearTimeout(prefsSaveTimer.current)
+    prefsSaveTimer.current = window.setTimeout(() => {
+      userApi.putPrefs({ signals: prefs }).catch(() => {
+        // 同步失败不影响本地使用 / sync failure doesn't block local use
+      })
+    }, 600)
   }, [prefs, user?.id])
+
+  // 卸载时清理防抖定时器 / clear pending sync timer on unmount
+  useEffect(() => {
+    return () => {
+      if (prefsSaveTimer.current) window.clearTimeout(prefsSaveTimer.current)
+    }
+  }, [])
 
   // 筛选 + 排序 / filter + sort
   const visible = useMemo(() => {
