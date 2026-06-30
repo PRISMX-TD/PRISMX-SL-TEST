@@ -18,12 +18,14 @@ def dispatch_push(signal: Signal) -> None:
     Match a newly generated signal against users' notification prefs, then
     push to every subscribed device."""
     cat = indicator_category(signal.indicator)
+    logger.warning(f"[push] dispatch start: indicator={signal.indicator!r} -> cat={cat!r}")
     if not cat:
+        logger.warning("[push] empty category, skip")
         return
     vapid_claims = {"sub": settings.VAPID_SUBJECT}
     pem = settings.vapid_private_key
     if not pem or not settings.VAPID_PUBLIC_KEY:
-        logger.warning("VAPID keys not configured, skipping push dispatch")
+        logger.warning("[push] VAPID keys not configured, skipping push dispatch")
         return
 
     db = SessionLocal()
@@ -33,7 +35,14 @@ def dispatch_push(signal: Signal) -> None:
             NotificationPref.enabled == True,
             NotificationPref.selected_categories.like(f"%{cat}%"),
         ).all()
+        logger.warning(f"[push] matched prefs: {len(prefs)} (enabled & whitelist contains {cat!r})")
         if not prefs:
+            # 额外打印当前所有启用的偏好，便于排查白名单不匹配 / dump enabled prefs for debugging
+            enabled = db.query(NotificationPref).filter(NotificationPref.enabled == True).all()
+            logger.warning(
+                "[push] no match; enabled prefs whitelists: "
+                + "; ".join(p.selected_categories or "[]" for p in enabled)
+            )
             return
 
         user_ids = set(p.user_id for p in prefs)
@@ -42,6 +51,7 @@ def dispatch_push(signal: Signal) -> None:
             .filter(PushSubscription.user_id.in_(user_ids))
             .all()
         )
+        logger.warning(f"[push] subscriptions for matched users: {len(subs)}")
 
         payload = json.dumps({
             "title": f"新信号 {signal.symbol}",
@@ -50,6 +60,7 @@ def dispatch_push(signal: Signal) -> None:
         })
 
         failed_ids: list[str] = []
+        sent = 0
         for sub in subs:
             try:
                 webpush(
@@ -61,12 +72,15 @@ def dispatch_push(signal: Signal) -> None:
                     vapid_private_key=pem,
                     vapid_claims=vapid_claims,
                 )
+                sent += 1
             except WebPushException as e:
                 # 过期或无效订阅，标记清理 / mark stale subscriptions for cleanup
-                logger.info(f"Push failed for sub {sub.id}: {e}")
+                status = e.response.status_code if e.response is not None else "?"
+                logger.warning(f"[push] webpush failed sub={sub.id} status={status}: {e}")
                 if e.response is not None and e.response.status_code in (410, 404):
                     failed_ids.append(sub.id)
                 continue
+        logger.warning(f"[push] sent ok: {sent}, failed: {len(failed_ids)}")
 
         # 清理失败/过期的订阅 / remove stale subscriptions
         if failed_ids:
@@ -75,6 +89,6 @@ def dispatch_push(signal: Signal) -> None:
             ).delete(synchronize_session=False)
             db.commit()
     except Exception:
-        logger.exception("Error dispatching push notifications")
+        logger.exception("[push] Error dispatching push notifications")
     finally:
         db.close()
