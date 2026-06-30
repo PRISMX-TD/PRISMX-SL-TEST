@@ -10,7 +10,6 @@ import { useTranslation } from 'react-i18next'
 const GITHUB_REPO = 'https://github.com/PRISMX-TD/PRISMX-SIGNAL-LAB'
 const BRIDGE_FILENAME = 'PRISMX-Bridge-Setup.exe'
 const DOWNLOAD_URL = `${GITHUB_REPO}/releases/latest/download/${BRIDGE_FILENAME}`
-const RELEASES_URL = `${GITHUB_REPO}/releases`
 const APP_VERSION = 'v1.2.0'
 
 export default function DownloadPage() {
@@ -111,26 +110,6 @@ export default function DownloadPage() {
         </ul>
       </div>
 
-      {/* 来源与校验 / source and verification */}
-      <div className="glass mt-5 flex flex-col items-start gap-3 p-6 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h3 className="font-display text-base font-semibold text-slate-100">
-            {t('download.sourceTitle')}
-          </h3>
-          <p className="mt-1 text-sm text-slate-400">{t('download.sourceDesc')}</p>
-        </div>
-        <a
-          href={RELEASES_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="btn-ghost flex shrink-0 items-center gap-2 px-4 py-2 text-sm"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 .5C5.37.5 0 5.78 0 12.29c0 5.2 3.44 9.6 8.21 11.16.6.11.82-.25.82-.56v-2c-3.34.7-4.04-1.58-4.04-1.58-.55-1.36-1.34-1.73-1.34-1.73-1.09-.73.08-.72.08-.72 1.2.08 1.84 1.21 1.84 1.21 1.07 1.79 2.81 1.27 3.5.97.11-.76.42-1.27.76-1.56-2.67-.3-5.47-1.31-5.47-5.84 0-1.29.47-2.34 1.24-3.17-.12-.3-.54-1.52.12-3.17 0 0 1.01-.32 3.3 1.21a11.5 11.5 0 0 1 6.01 0c2.29-1.53 3.3-1.21 3.3-1.21.66 1.65.24 2.87.12 3.17.77.83 1.23 1.88 1.23 3.17 0 4.54-2.81 5.53-5.49 5.83.43.37.81 1.1.81 2.22v3.29c0 .31.22.68.83.56A12.01 12.01 0 0 0 24 12.29C24 5.78 18.63.5 12 .5z" />
-          </svg>
-          {t('download.sourceLink')}
-        </a>
-      </div>
     </div>
   )
 }

@@ -72,6 +72,18 @@ graph TD
 - Bridge：Python + tkinter GUI,打包为独立 exe(PyInstaller)。连接时扫描本机 MT5(`terminal64.exe`),后端地址写死为 `https://api.prismxsignallab.com`,用户只需填 API Token。
 - EA：MQL5，提供两个版本（见第 7 节），均内置中英双语文案与日志。
 
+### 关键配置说明
+
+以下为上线后做过的重要改动,接手维护时需了解其设计意图:
+
+**数据库双模式** ([database.py](file:///c:/Users/REX/Downloads/PRISMX%20SIGNAL/backend/app/core/database.py#L37-L69)): `_migrate_columns` 通过 `DATABASE_URL` 前缀自动切换类型 — SQLite 用 `DATETIME`,Postgres 用 `TIMESTAMP`。`.env` 中设完整的 `postgresql://` 连接串即可切换,不设则默认本地 SQLite。
+
+**前端 API 寻址** ([client.ts](file:///c:/Users/REX/Downloads/PRISMX%20SIGNAL/frontend/src/api/client.ts#L8) / [useClientSocket.ts](file:///c:/Users/REX/Downloads/PRISMX%20SIGNAL/frontend/src/store/useClientSocket.ts#L19-L29)): 通过 `VITE_API_BASE` 环境变量控制。生产设 `https://api.prismxsignallab.com`,本地留空走 Vite 代理。WebSocket 地址自动 `http→ws` / `https→wss` 转换。[vite-env.d.ts](file:///c:/Users/REX/Downloads/PRISMX%20SIGNAL/frontend/src/vite-env.d.ts) 提供 `ImportMetaEnv` 类型声明,缺乏则 `tsc -b` 报 TS2339。
+
+**CORS** ([config.py](file:///c:/Users/REX/Downloads/PRISMX%20SIGNAL/backend/app/core/config.py#L18-L23)): 精确名单 + 正则双通道 — `CORS_ORIGINS` 放行正式域名和 localhost,`CORS_ORIGIN_REGEX = r"https://.*\.vercel\.app"` 覆盖所有 Vercel 部署(含预览域名)。
+
+**Bridge** ([bridge_app.py](file:///c:/Users/REX/Downloads/PRISMX%20SIGNAL/bridge/bridge_app.py#L30)): 后端地址写死 `DEFAULT_BACKEND = "https://api.prismxsignallab.com"`,输入框已隐藏。`scan_terminals` 仅匹配 MT5(`terminal64.exe`),排除 MT4(`terminal.exe`);`initialize` 有 10 秒超时兜底。
+
 ## 3. 路由定义（前端）
 
 | 路由 | 用途 |
