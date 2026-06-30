@@ -16,10 +16,16 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRE_MINUTES: int = 60 * 24  # 1 天 / 1 day
 
+    # Google 登录 / Google Sign-In：在 Google Cloud Console 创建的 OAuth Web Client ID。
+    # 留空则关闭 Google 登录端点。 / OAuth Web Client ID from Google Cloud Console;
+    # empty disables the Google login endpoint.
+    GOOGLE_CLIENT_ID: str = ""
+
     # 限流 / Rate limiting（默认值，可用环境变量覆盖）。
     # Rate limits (defaults; overridable via env).
     RATE_LIMIT_LOGIN: str = "10/minute"
     RATE_LIMIT_REGISTER: str = "5/minute"
+    RATE_LIMIT_GOOGLE: str = "10/minute"
 
     # 数据库 / Database（默认 SQLite，生产用环境变量 DATABASE_URL 覆盖为 Postgres）
     # Database (defaults to SQLite; override via DATABASE_URL env for Postgres in prod)

@@ -75,3 +75,15 @@ def _migrate_columns() -> None:
             for name, col_type in order_new.items():
                 if name not in order_cols:
                     conn.execute(text(f"ALTER TABLE orders ADD COLUMN {name} {col_type}"))
+
+    # users 表：password_hash 改可空（Google 登录用户无密码）。
+    # 旧表建表时为 NOT NULL，需放开约束，否则插入无密码用户会被拒。
+    # users: make password_hash nullable (Google users have no password).
+    if "users" in inspector.get_table_names():
+        pw_col = next(
+            (c for c in inspector.get_columns("users") if c["name"] == "password_hash"),
+            None,
+        )
+        if pw_col is not None and not pw_col["nullable"] and is_postgres:
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL"))

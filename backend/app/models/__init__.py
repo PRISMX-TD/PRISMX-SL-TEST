@@ -21,7 +21,8 @@ class User(Base):
 
     id = Column(String, primary_key=True, default=_uuid)
     email = Column(String, unique=True, nullable=False, index=True)
-    password_hash = Column(String, nullable=False)
+    # 密码哈希：Google 登录的用户没有密码，故可空 / nullable: Google users have no password
+    password_hash = Column(String, nullable=True)
     api_token = Column(String, unique=True, nullable=False, index=True)
     created_at = Column(DateTime, default=_now)
 

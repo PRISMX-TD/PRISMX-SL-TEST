@@ -19,6 +19,11 @@ class AuthRequest(BaseModel):
     password: str = Field(min_length=8, max_length=128)
 
 
+class GoogleAuthRequest(BaseModel):
+    # 前端 Google Identity Services 返回的 ID Token / ID token from Google Identity Services
+    credential: str = Field(min_length=1, max_length=4096)
+
+
 class UserOut(BaseModel):
     id: str
     email: str

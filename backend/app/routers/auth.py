@@ -9,10 +9,11 @@ from app.core.security import (
     create_access_token,
     generate_api_token,
     hash_password,
+    verify_google_id_token,
     verify_password,
 )
 from app.models import EABinding, User
-from app.schemas import AuthRequest, AuthResponse, UserOut
+from app.schemas import AuthRequest, AuthResponse, GoogleAuthRequest, UserOut
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -37,6 +38,39 @@ def register(request: Request, req: AuthRequest, db: Session = Depends(get_db)):
     db.add(EABinding(user_id=user.id))
     db.commit()
     db.refresh(user)
+
+    token = create_access_token(user.id)
+    return AuthResponse(token=token, user=UserOut(id=user.id, email=user.email))
+
+
+@router.post("/google", response_model=AuthResponse)
+@limiter.limit(settings.RATE_LIMIT_GOOGLE)
+def google_login(request: Request, req: GoogleAuthRequest, db: Session = Depends(get_db)):
+    """Google 登录：校验 ID Token，按邮箱找到或创建用户后签发 JWT。
+    Google sign-in: verify ID token, find-or-create user by email, then issue a JWT.
+    """
+    if not settings.GOOGLE_CLIENT_ID:
+        raise HTTPException(status_code=503, detail="Google 登录未启用 / Google login is not enabled")
+
+    info = verify_google_id_token(req.credential)
+    if not info:
+        raise HTTPException(status_code=401, detail="Google 凭证无效 / Invalid Google credential")
+
+    email = info["email"].lower()
+    user = db.query(User).filter(User.email == email).first()
+    if user is None:
+        # 首次用 Google 登录：创建无密码用户并建空 EA 绑定。
+        # First-time Google login: create a password-less user and an empty EA binding.
+        user = User(
+            email=email,
+            password_hash=None,
+            api_token=generate_api_token(),
+        )
+        db.add(user)
+        db.flush()
+        db.add(EABinding(user_id=user.id))
+        db.commit()
+        db.refresh(user)
 
     token = create_access_token(user.id)
     return AuthResponse(token=token, user=UserOut(id=user.id, email=user.email))

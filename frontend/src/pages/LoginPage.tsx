@@ -6,10 +6,11 @@ import { useAuth } from '../store/auth'
 import Logo from '../components/Logo'
 import LanguageToggle from '../components/LanguageToggle'
 import AuroraBackground from '../components/AuroraBackground'
+import GoogleLoginButton from '../components/GoogleLoginButton'
 
 export default function LoginPage() {
   const { t } = useTranslation()
-  const { login, register, isAuthed } = useAuth()
+  const { login, register, loginWithGoogle, isAuthed } = useAuth()
   const navigate = useNavigate()
   const [params] = useSearchParams()
 
@@ -35,6 +36,19 @@ export default function LoginPage() {
       navigate('/app', { replace: true })
     } catch (err) {
       setError(err instanceof Error ? err.message : t('auth.errorFailed'))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const onGoogleCredential = async (credential: string) => {
+    setError('')
+    setLoading(true)
+    try {
+      await loginWithGoogle(credential)
+      navigate('/app', { replace: true })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('auth.googleError'))
     } finally {
       setLoading(false)
     }
@@ -124,6 +138,14 @@ export default function LoginPage() {
                 {loading ? t('common.loading') : mode === 'login' ? t('auth.login') : t('auth.register')}
               </button>
             </form>
+
+            <div className="my-5 flex items-center gap-3">
+              <span className="h-px flex-1 bg-white/10" />
+              <span className="text-xs uppercase tracking-widest text-slate-500">{t('auth.or')}</span>
+              <span className="h-px flex-1 bg-white/10" />
+            </div>
+
+            <GoogleLoginButton onCredential={onGoogleCredential} onError={setError} />
           </div>
         </div>
       </div>

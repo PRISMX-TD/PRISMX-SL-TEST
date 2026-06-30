@@ -81,7 +81,9 @@
     "emailPlaceholder": "you@example.com",
     "passwordPlaceholder": "Enter password",
     "tagline": "Indicator-driven signals · One click to MT5",
-    "errorFailed": "Failed. Please check email and password"
+    "errorFailed": "Failed. Please check email and password",
+    "or": "or",
+    "googleError": "Google sign-in failed. Please try again"
   },
   "signals": {
     "title": "Live Trading Signals",

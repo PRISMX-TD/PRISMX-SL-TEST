@@ -8,6 +8,7 @@ interface AuthContextValue {
   isAuthed: boolean
   login: (email: string, password: string) => Promise<void>
   register: (email: string, password: string) => Promise<void>
+  loginWithGoogle: (credential: string) => Promise<void>
   logout: () => void
 }
 
@@ -49,6 +50,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     persist(res.user, res.token)
   }
 
+  const loginWithGoogle = async (credential: string) => {
+    const res = await authApi.google(credential)
+    persist(res.user, res.token)
+  }
+
   const logout = () => {
     clearToken()
     localStorage.removeItem(USER_KEY)
@@ -56,7 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, isAuthed: !!user, login, register, logout }}>
+    <AuthContext.Provider value={{ user, isAuthed: !!user, login, register, loginWithGoogle, logout }}>
       {children}
     </AuthContext.Provider>
   )

@@ -18,8 +18,11 @@ def hash_password(password: str) -> str:
     return bcrypt.hashpw(_to_72(password), bcrypt.gensalt()).decode("utf-8")
 
 
-def verify_password(plain: str, hashed: str) -> bool:
+def verify_password(plain: str, hashed: str | None) -> bool:
     """校验密码 / Verify a password against its hash."""
+    if not hashed:
+        # 无密码用户（如 Google 登录）不能用密码登录 / password-less users can't password-login
+        return False
     try:
         return bcrypt.checkpw(_to_72(plain), hashed.encode("utf-8"))
     except ValueError:
@@ -45,6 +48,35 @@ def decode_access_token(token: str) -> str | None:
 def generate_api_token() -> str:
     """生成 EA 专属 API Token / Generate a per-user API token for EA binding."""
     return "prismx_" + secrets.token_urlsafe(32)
+
+
+def verify_google_id_token(credential: str) -> dict | None:
+    """校验 Google ID Token，返回其载荷（含 email、sub 等）/ Verify a Google ID token.
+
+    用 Google 官方库按配置的 GOOGLE_CLIENT_ID 校验签名、签发方与受众。
+    校验失败（无效、过期、aud 不符等）返回 None。
+    Validates signature, issuer and audience against GOOGLE_CLIENT_ID via Google's
+    official library. Returns None on any failure (invalid/expired/wrong aud).
+    """
+    if not settings.GOOGLE_CLIENT_ID:
+        return None
+    try:
+        from google.auth.transport import requests as google_requests
+        from google.oauth2 import id_token
+
+        info = id_token.verify_oauth2_token(
+            credential,
+            google_requests.Request(),
+            settings.GOOGLE_CLIENT_ID,
+        )
+        # 仅接受已验证邮箱的 Google 账号 / only accept verified-email Google accounts
+        if info.get("iss") not in ("accounts.google.com", "https://accounts.google.com"):
+            return None
+        if not info.get("email") or not info.get("email_verified"):
+            return None
+        return info
+    except Exception:
+        return None
 
 
 def authenticate_api_token(db, x_api_token: str | None):

@@ -81,7 +81,9 @@
     "emailPlaceholder": "you@example.com",
     "passwordPlaceholder": "请输入密码",
     "tagline": "技术指标驱动的交易信号 · 一键直达 MT5",
-    "errorFailed": "操作失败，请检查邮箱与密码"
+    "errorFailed": "操作失败，请检查邮箱与密码",
+    "or": "或",
+    "googleError": "Google 登录失败，请重试"
   },
   "signals": {
     "title": "实时交易信号",
