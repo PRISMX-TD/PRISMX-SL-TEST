@@ -40,6 +40,9 @@ bridge/dist/
 bridge/*.spec
 bridge/build_log.txt
 
+# ===== 文档 / Markdown（不纳入仓库）=====
+*.md
+
 # ===== 编辑器 / 系统文件 =====
 .vscode/
 .idea/
