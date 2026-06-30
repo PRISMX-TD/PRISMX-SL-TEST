@@ -47,6 +47,21 @@ class Settings(BaseSettings):
 
     # 信号引擎 / Signal engine
     SIGNAL_INTERVAL_SECONDS: int = 15  # 信号生成节拍 / signal tick interval
+    # 信号有效期（分钟）：webhook 信号超过此时长自动置为 EXPIRED。
+    # Signal lifetime (minutes): webhook signals older than this become EXPIRED.
+    SIGNAL_EXPIRE_MINUTES: int = 30
+    # 是否启用内置模拟信号引擎（本地测试用，接入 TradingView 后设为 false）。
+    # Enable the built-in mock signal engine (for local testing; set false once
+    # TradingView webhooks feed real signals).
+    ENABLE_MOCK_SIGNAL_ENGINE: bool = True
+
+    # TradingView Webhook：警报推送时在 JSON body 内携带的密钥，服务器据此校验来源。
+    # TradingView 的 webhook 不支持自定义请求头，故密钥放在 body 的 "secret" 字段。
+    # 生产环境（ENV=production）必须设置为强随机值，留空将拒绝所有 webhook 请求。
+    # TradingView webhook secret carried inside the JSON body (TradingView cannot
+    # send custom headers). The server validates the "secret" field against this.
+    # In production a strong random value is mandatory; empty rejects all webhooks.
+    WEBHOOK_SECRET: str = ""
 
     # 风控 / Risk control
     MAX_VOLUME_PER_ORDER: float = 10.0  # 单笔最大手数 / max lots per order
@@ -80,4 +95,13 @@ if settings.ENV.lower() == "production" and settings.JWT_SECRET == _DEFAULT_JWT_
     raise RuntimeError(
         "JWT_SECRET 仍为默认值，生产环境（ENV=production）必须在 .env 中设置强随机密钥。"
         " / JWT_SECRET is still the default; set a strong random secret in .env when ENV=production."
+    )
+
+# Webhook 密钥校验：生产环境必须配置，否则 TradingView 信号来源无法验证，
+# 任何人猜到接口地址即可伪造信号。/ Webhook secret is mandatory in production;
+# without it webhook signals are unauthenticated and forgeable.
+if settings.ENV.lower() == "production" and not settings.WEBHOOK_SECRET:
+    raise RuntimeError(
+        "WEBHOOK_SECRET 未设置，生产环境（ENV=production）必须在 .env 中配置强随机密钥。"
+        " / WEBHOOK_SECRET is empty; set a strong random secret in .env when ENV=production."
     )

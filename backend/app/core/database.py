@@ -76,6 +76,18 @@ def _migrate_columns() -> None:
                 if name not in order_cols:
                     conn.execute(text(f"ALTER TABLE orders ADD COLUMN {name} {col_type}"))
 
+    # signals 表：补充来源与去重列 / add source & dedup columns on signals
+    if "signals" in inspector.get_table_names():
+        signal_cols = {c["name"] for c in inspector.get_columns("signals")}
+        signal_new = {
+            "source": "VARCHAR",
+            "external_id": "VARCHAR",
+        }
+        with engine.begin() as conn:
+            for name, col_type in signal_new.items():
+                if name not in signal_cols:
+                    conn.execute(text(f"ALTER TABLE signals ADD COLUMN {name} {col_type}"))
+
     # users 表：password_hash 改可空（Google 登录用户无密码）。
     # 旧表建表时为 NOT NULL，需放开约束，否则插入无密码用户会被拒。
     # users: make password_hash nullable (Google users have no password).

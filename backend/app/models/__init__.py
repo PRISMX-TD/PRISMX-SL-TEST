@@ -88,6 +88,11 @@ class Signal(Base):
     stop_loss = Column(Float)
     take_profit = Column(Float)
     indicator = Column(String)
+    # 来源：mock 内置引擎 / tradingview Webhook / source of the signal
+    source = Column(String, default="mock")
+    # 外部唯一编号（如 TradingView 警报自带的 id），用于去重，可空。
+    # External unique id (e.g. from a TradingView alert) for dedup; nullable.
+    external_id = Column(String, nullable=True, unique=True, index=True)
     status = Column(String, default="ACTIVE")  # ACTIVE / EXPIRED
     created_at = Column(DateTime, default=_now)
     expire_at = Column(DateTime, nullable=True)

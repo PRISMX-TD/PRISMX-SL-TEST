@@ -12,7 +12,7 @@ from app.core.config import settings
 from app.core.database import init_db
 from app.core.rate_limit import limiter
 from app.engine.signal_engine import signal_loop
-from app.routers import auth, bridge, ea, ea_poll, orders, signals, ws
+from app.routers import auth, bridge, ea, ea_poll, orders, signals, webhook, ws
 from app.routers.bridge import offline_monitor_loop
 
 
@@ -20,11 +20,16 @@ from app.routers.bridge import offline_monitor_loop
 async def lifespan(app: FastAPI):
     # 启动：建表 + 启动信号引擎 + 离线检测 / startup: tables + engine + offline monitor
     init_db()
-    task = asyncio.create_task(signal_loop())
+    task = (
+        asyncio.create_task(signal_loop())
+        if settings.ENABLE_MOCK_SIGNAL_ENGINE
+        else None
+    )
     monitor = asyncio.create_task(offline_monitor_loop())
     yield
     # 关闭：停止后台任务 / shutdown: stop background tasks
-    task.cancel()
+    if task is not None:
+        task.cancel()
     monitor.cancel()
 
 
@@ -51,6 +56,7 @@ app.include_router(orders.router, prefix=settings.API_PREFIX)
 app.include_router(ea.router, prefix=settings.API_PREFIX)
 app.include_router(ea_poll.router, prefix=settings.API_PREFIX)
 app.include_router(bridge.router, prefix=settings.API_PREFIX)
+app.include_router(webhook.router, prefix=settings.API_PREFIX)
 # WebSocket 路由 / WebSocket routers
 app.include_router(ws.router)
 
