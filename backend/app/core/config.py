@@ -73,17 +73,30 @@ class Settings(BaseSettings):
     # EA 心跳 / EA heartbeat
     EA_OFFLINE_TIMEOUT_SECONDS: int = 30
 
-    # Web Push / VAPID：私钥以 base64 编码的 PEM 存储（避免 .env 多行问题），
-    # 通过 vapid_private_key_pem 解码为原始 PEM。公钥与 subject 用于推送订阅。
-    # VAPID config: private key stored as base64-encoded PEM (avoids multiline .env
-    # issues); decode via vapid_private_key_pem. Public key and subject for push.
+    # Web Push / VAPID：私钥以 urlsafe-base64 编码的 DER（PKCS8）存储，直接交给
+    # pywebpush（py_vapid 的 from_string 走 urlsafe-base64 解码，不能用标准 PEM）。
+    # 旧字段 VAPID_PRIVATE_KEY_B64（标准 base64 PEM）仍保留作兼容，但 from_der 会解析失败，
+    # 故优先使用 VAPID_PRIVATE_KEY_DER。公钥与 subject 用于推送订阅。
+    # VAPID: private key stored as urlsafe-base64-encoded DER (PKCS8) and passed
+    # straight to pywebpush (py_vapid.from_string decodes via urlsafe-base64, so a
+    # standard PEM does not work). Public key and subject are used for push.
+    VAPID_PRIVATE_KEY_DER: str = ""
     VAPID_PRIVATE_KEY_B64: str = ""
     VAPID_PUBLIC_KEY: str = ""
     VAPID_SUBJECT: str = "mailto:admin@prismxsignallab.com"
 
     @property
+    def vapid_private_key(self) -> str:
+        """返回可直接传给 pywebpush 的私钥字符串：优先 urlsafe-DER；否则回退到
+        base64 PEM 解码后的 PEM 文本（旧配置）。/ Private key string for pywebpush:
+        prefer urlsafe-DER; fall back to decoded PEM text (legacy)."""
+        if self.VAPID_PRIVATE_KEY_DER:
+            return self.VAPID_PRIVATE_KEY_DER
+        return self.vapid_private_key_pem
+
+    @property
     def vapid_private_key_pem(self) -> str:
-        """将 base64 编码的私钥解码为 PEM 文本。/ Decode base64 private key to PEM text."""
+        """将 base64 编码的私钥解码为 PEM 文本（旧配置）。/ Decode legacy base64 PEM."""
         import base64
         if not self.VAPID_PRIVATE_KEY_B64:
             return ""

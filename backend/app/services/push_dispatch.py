@@ -21,7 +21,7 @@ def dispatch_push(signal: Signal) -> None:
     if not cat:
         return
     vapid_claims = {"sub": settings.VAPID_SUBJECT}
-    pem = settings.vapid_private_key_pem
+    pem = settings.vapid_private_key
     if not pem or not settings.VAPID_PUBLIC_KEY:
         logger.warning("VAPID keys not configured, skipping push dispatch")
         return
