@@ -102,13 +102,19 @@ export default function OrderModal({ signal, eaOnline, accounts, onCancel, onCon
   const isBuy = signal.side === 'BUY'
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4">
       <div className="absolute inset-0 bg-ink-950/70 backdrop-blur-md" onClick={onCancel} />
-      <div className="glass relative z-10 w-full max-w-md animate-fade-in-up p-6 shadow-glass-lg">
-        <h3 className="mb-4 font-display text-xl font-bold text-slate-100">
+      <div className="glass relative z-10 flex max-h-[92vh] w-full max-w-md animate-fade-in-up flex-col overflow-hidden rounded-b-none rounded-t-2xl shadow-glass-lg sm:max-h-[90vh] sm:rounded-2xl">
+        {/* 移动端抽屉把手 / mobile drag handle */}
+        <div className="flex justify-center pt-3 sm:hidden">
+          <span className="h-1 w-10 rounded-full bg-white/20" />
+        </div>
+        <h3 className="px-5 pb-3 pt-3 font-display text-xl font-bold text-slate-100 sm:px-6 sm:pt-6">
           <span className="neon-text">{t('order.confirmTitle')}</span>
         </h3>
 
+        {/* 可滚动内容区 / scrollable body */}
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 sm:px-6">
         <div className="mb-4 space-y-2.5 rounded-xl border border-white/10 bg-white/[0.03] p-4 text-sm">
           <div className="flex justify-between">
             <span className="text-slate-400">{t('order.symbol')}</span>
@@ -237,8 +243,9 @@ export default function OrderModal({ signal, eaOnline, accounts, onCancel, onCon
             {error}
           </div>
         )}
-
-        <div className="flex gap-3">
+        </div>
+        {/* 固定底部操作区 / sticky footer actions */}
+        <div className="flex gap-3 border-t border-white/10 px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-6">
           <button onClick={onCancel} className="btn-ghost flex-1 py-2.5">
             {t('common.cancel')}
           </button>

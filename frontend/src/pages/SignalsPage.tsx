@@ -756,43 +756,46 @@ export default function SignalsPage() {
             placeholder={t('signals.searchPlaceholder')}
             className="input sm:max-w-[200px]"
           />
-          <Dropdown<SideFilter>
-            value={sideFilter}
-            onChange={setSideFilter}
-            label={t('signals.filterSide')}
-            options={[
-              { value: 'ALL', label: t('signals.all') },
-              { value: 'BUY', label: t('common.buy') },
-              { value: 'SELL', label: t('common.sell') },
-            ]}
-          />
-          <Dropdown<StatusFilter>
-            value={statusFilter}
-            onChange={setStatusFilter}
-            label={t('signals.filterStatus')}
-            options={[
-              { value: 'ALL', label: t('signals.all') },
-              { value: 'ACTIVE', label: t('signals.active') },
-              { value: 'EXPIRING', label: t('signals.expiringSoon') },
-              { value: 'EXPIRED', label: t('signals.expired') },
-            ]}
-          />
-          <Dropdown<GroupBy>
-            value={prefs.groupBy}
-            onChange={(v) => setPrefs((p) => ({ ...p, groupBy: v }))}
-            label={t('signals.groupByLabel')}
-            options={[
-              { value: 'none', label: t('signals.groupBy.none') },
-              { value: 'status', label: t('signals.groupBy.status') },
-              { value: 'indicator', label: t('signals.groupBy.indicator') },
-            ]}
-          />
-          <Dropdown<SortKey>
-            value={prefs.sort}
-            onChange={(v) => setPrefs((p) => ({ ...p, sort: v }))}
-            label={t('signals.sortBy')}
-            options={sortOptions}
-          />
+          {/* 移动端筛选项 2 列网格 / 2-col grid of filters on mobile */}
+          <div className="grid grid-cols-2 gap-2 sm:contents">
+            <Dropdown<SideFilter>
+              value={sideFilter}
+              onChange={setSideFilter}
+              label={t('signals.filterSide')}
+              options={[
+                { value: 'ALL', label: t('signals.all') },
+                { value: 'BUY', label: t('common.buy') },
+                { value: 'SELL', label: t('common.sell') },
+              ]}
+            />
+            <Dropdown<StatusFilter>
+              value={statusFilter}
+              onChange={setStatusFilter}
+              label={t('signals.filterStatus')}
+              options={[
+                { value: 'ALL', label: t('signals.all') },
+                { value: 'ACTIVE', label: t('signals.active') },
+                { value: 'EXPIRING', label: t('signals.expiringSoon') },
+                { value: 'EXPIRED', label: t('signals.expired') },
+              ]}
+            />
+            <Dropdown<GroupBy>
+              value={prefs.groupBy}
+              onChange={(v) => setPrefs((p) => ({ ...p, groupBy: v }))}
+              label={t('signals.groupByLabel')}
+              options={[
+                { value: 'none', label: t('signals.groupBy.none') },
+                { value: 'status', label: t('signals.groupBy.status') },
+                { value: 'indicator', label: t('signals.groupBy.indicator') },
+              ]}
+            />
+            <Dropdown<SortKey>
+              value={prefs.sort}
+              onChange={(v) => setPrefs((p) => ({ ...p, sort: v }))}
+              label={t('signals.sortBy')}
+              options={sortOptions}
+            />
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <Segmented<ViewMode>
@@ -869,7 +872,7 @@ export default function SignalsPage() {
 
       {toast && (
         <div
-          className={`fixed bottom-6 left-1/2 z-50 -translate-x-1/2 animate-fade-in-up rounded-xl border px-5 py-3 text-sm shadow-prism ${toastStyle}`}
+          className={`fixed bottom-24 left-1/2 z-50 -translate-x-1/2 animate-fade-in-up rounded-xl border px-5 py-3 text-sm shadow-prism sm:bottom-6 ${toastStyle}`}
         >
           {toast.msg}
         </div>

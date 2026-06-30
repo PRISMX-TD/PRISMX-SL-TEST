@@ -64,7 +64,9 @@ export default function OrdersPage() {
         {orders.length === 0 ? (
           <p className="py-16 text-center text-sm text-slate-500">{t('orders.empty')}</p>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+            {/* 桌面端表格 / desktop table */}
+            <div className="hidden overflow-x-auto md:block">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-white/10 text-left text-xs uppercase tracking-wider text-slate-500">
@@ -120,13 +122,68 @@ export default function OrdersPage() {
                 ))}
               </tbody>
             </table>
-          </div>
+            </div>
+
+            {/* 移动端卡片列表 / mobile card list */}
+            <div className="divide-y divide-white/5 md:hidden">
+              {orders.map((o) => (
+                <div key={o.id} className="p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-base font-bold text-slate-100">{o.symbol}</span>
+                      <span
+                        className={`tag ${
+                          o.side === 'BUY' ? 'bg-up/15 text-up' : 'bg-down/15 text-down'
+                        }`}
+                      >
+                        {o.side === 'BUY' ? t('common.buy') : t('common.sell')}
+                      </span>
+                    </div>
+                    <span className={`tag ${statusStyle[o.status]}`}>
+                      {t(`orders.status.${o.status}`)}
+                    </span>
+                  </div>
+
+                  <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+                    <div className="flex justify-between gap-2">
+                      <span className="text-slate-500">{t('orders.colType')}</span>
+                      <span className="text-slate-300">{t(`orders.action.${o.action ?? 'ORDER'}`)}</span>
+                    </div>
+                    <div className="flex justify-between gap-2">
+                      <span className="text-slate-500">{t('orders.colVolume')}</span>
+                      <span className="font-mono text-slate-200">{o.volume}</span>
+                    </div>
+                    <div className="flex justify-between gap-2">
+                      <span className="text-slate-500">{t('orders.colAccount')}</span>
+                      <span className="font-mono text-slate-300">{o.mt5Login ?? '-'}</span>
+                    </div>
+                    <div className="flex justify-between gap-2">
+                      <span className="text-slate-500">{t('orders.colPrice')}</span>
+                      <span className="font-mono text-slate-200">{o.filledPrice ?? '-'}</span>
+                    </div>
+                    <div className="flex justify-between gap-2">
+                      <span className="text-slate-500">{t('orders.colTicket')}</span>
+                      <span className="font-mono text-slate-400">{o.mt5Ticket ?? '-'}</span>
+                    </div>
+                    <div className="flex justify-between gap-2">
+                      <span className="text-slate-500">{t('orders.colTime')}</span>
+                      <span className="text-slate-400">{fmtTime(o.createdAt)}</span>
+                    </div>
+                  </div>
+
+                  {o.message && (
+                    <p className="mt-2 break-words text-xs text-slate-500">{o.message}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </div>
 
       {toast && (
         <div
-          className={`fixed bottom-6 left-1/2 z-50 -translate-x-1/2 animate-fade-in-up rounded-xl border px-5 py-3 text-sm shadow-prism ${toastStyle}`}
+          className={`fixed bottom-24 left-1/2 z-50 -translate-x-1/2 animate-fade-in-up rounded-xl border px-5 py-3 text-sm shadow-prism sm:bottom-6 ${toastStyle}`}
         >
           {toast.msg}
         </div>

@@ -9,14 +9,15 @@ export default function EAStatusBadge() {
 
   return (
     <div
-      className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm backdrop-blur-md ${
+      className={`flex items-center gap-2 rounded-lg border px-2 py-1.5 text-sm backdrop-blur-md sm:px-3 ${
         online ? 'border-up/40 bg-up/10 text-up shadow-[0_0_18px_rgba(47,230,160,0.25)]' : 'border-white/10 bg-white/[0.04] text-slate-400'
       }`}
     >
-      <span className={`h-2 w-2 rounded-full ${online ? 'bg-up animate-breathe shadow-[0_0_8px_rgba(47,230,160,0.8)]' : 'bg-slate-500'}`} />
-      <span>{online ? t('connStatus.online') : t('connStatus.offline')}</span>
+      <span className={`h-2 w-2 shrink-0 rounded-full ${online ? 'bg-up animate-breathe shadow-[0_0_8px_rgba(47,230,160,0.8)]' : 'bg-slate-500'}`} />
+      {/* 移动端仅显示状态点，文字在 sm 以上展示 / dot-only on mobile, text from sm up */}
+      <span className="hidden sm:inline">{online ? t('connStatus.online') : t('connStatus.offline')}</span>
       {online && onlineAccounts.length === 1 && (
-        <span className="font-mono text-xs text-slate-400">
+        <span className="hidden font-mono text-xs text-slate-400 sm:inline">
           {t('connStatus.account')} {onlineAccounts[0].login}
         </span>
       )}
