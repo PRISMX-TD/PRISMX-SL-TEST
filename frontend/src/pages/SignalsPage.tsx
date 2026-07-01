@@ -103,29 +103,25 @@ const FOCUS_DOT: Record<FocusState, string> = { WATCH: '#94a3b8', LONG: '#2fe6a0
 
 // 多周期趋势要展示的固定周期顺序 / fixed order of timeframes shown in the trend widget
 const TREND_TFS = ['M5', 'M15', 'H1', 'H4'] as const
-// 每种趋势方向对应的圆点颜色 / dot color for each trend direction
-const TREND_COLOR: Record<TrendDir, string> = {
-  UP: '#2fe6a0',
-  DOWN: '#ff4d6d',
-  FLAT: '#64748b',
+// 每种趋势方向的箭头 + 颜色 / arrow and color for each trend direction
+const TREND_VIS: Record<TrendDir, { arrow: string; color: string }> = {
+  UP: { arrow: '↑', color: '#2fe6a0' },
+  DOWN: { arrow: '↓', color: '#ff4d6d' },
+  FLAT: { arrow: '→', color: '#64748b' },
 }
 
-// 多周期趋势小组件：英雄卡右上角，四个「周期 + 彩色小点」。
-// 无趋势数据时圆点为灰色，等 webhook 推送后自动亮起。
-// Multi-timeframe trend widget: four "timeframe + colored dot" cells in the hero card corner.
+// 多周期趋势小组件：英雄卡右上角，四个「周期 + 彩色箭头」。
+// Multi-timeframe trend widget: four "timeframe + colored arrow" cells.
 function MultiTfTrend({ trend }: { trend?: Trend }) {
   return (
     <div className="flex items-center gap-3">
       {TREND_TFS.map((tf) => {
         const dir: TrendDir = trend?.timeframes?.[tf] ?? 'FLAT'
-        const color = TREND_COLOR[dir]
+        const { arrow, color } = TREND_VIS[dir]
         return (
           <div key={tf} className="flex flex-col items-center gap-1">
             <span className="text-[9px] font-medium uppercase leading-none tracking-wider text-slate-500">{tf}</span>
-            <span
-              className="h-2 w-2 rounded-full"
-              style={{ backgroundColor: color, boxShadow: `0 0 6px ${color}` }}
-            />
+            <span className="text-sm font-bold leading-none" style={{ color }}>{arrow}</span>
           </div>
         )
       })}
