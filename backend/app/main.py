@@ -12,7 +12,7 @@ from app.core.config import settings
 from app.core.database import init_db
 from app.core.rate_limit import limiter
 from app.engine.signal_engine import signal_loop
-from app.routers import account, auth, bridge, ea, ea_poll, notifications, orders, signals, webhook, ws
+from app.routers import account, auth, bridge, ea, ea_poll, notifications, orders, signals, trends, webhook, ws
 from app.routers.bridge import offline_monitor_loop
 
 
@@ -52,6 +52,7 @@ app.add_middleware(
 # REST 路由 / REST routers
 app.include_router(auth.router, prefix=settings.API_PREFIX)
 app.include_router(signals.router, prefix=settings.API_PREFIX)
+app.include_router(trends.router, prefix=settings.API_PREFIX)
 app.include_router(orders.router, prefix=settings.API_PREFIX)
 app.include_router(ea.router, prefix=settings.API_PREFIX)
 app.include_router(ea_poll.router, prefix=settings.API_PREFIX)

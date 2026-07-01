@@ -171,3 +171,18 @@ class UserPref(Base):
     # 偏好 JSON 文档（按命名空间存放，如 {"signals": {...}}）/ prefs JSON keyed by namespace
     data = Column(Text, default="{}")
     updated_at = Column(DateTime, default=_now, onupdate=_now)
+
+
+class Trend(Base):
+    """多周期趋势快照：每个品种一条，后来的覆盖前面的。
+    Multi-timeframe trend snapshot: one row per symbol, latest overwrites previous.
+    由 TradingView 指标经 /api/webhook/trend 推送，仅在任一周期翻转时更新。
+    Pushed by a TradingView indicator via /api/webhook/trend, only when a TF flips.
+    """
+    __tablename__ = "trends"
+
+    id = Column(String, primary_key=True, default=_uuid)
+    symbol = Column(String, nullable=False, unique=True, index=True)
+    # 各周期趋势的 JSON 对象，如 {"M5":"UP","M15":"DOWN",...} / per-timeframe map as JSON
+    timeframes = Column(Text, default="{}")
+    updated_at = Column(DateTime, default=_now, onupdate=_now)

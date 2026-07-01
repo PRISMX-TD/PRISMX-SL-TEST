@@ -19,10 +19,12 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.database import SessionLocal
 from app.core.rate_limit import limiter
-from app.models import Signal
+from app.models import Signal, Trend
 from app.schemas import SYMBOL_PATTERN, SignalOut
 from app.services.connection_manager import manager
 from app.services.push_dispatch import dispatch_push
+
+import json
 
 router = APIRouter(prefix="/webhook", tags=["webhook"])
 
@@ -117,3 +119,62 @@ async def tradingview_webhook(request: Request, payload: TradingViewSignal):
     except Exception:
         pass
     return {"ok": True, "deduped": False, "id": data["id"]}
+
+
+# 允许的趋势方向 / allowed trend directions
+TrendDir = Literal["UP", "DOWN", "FLAT"]
+
+
+class TrendSignal(BaseModel):
+    """TradingView 多周期趋势推送载荷 / multi-timeframe trend payload from TradingView."""
+
+    secret: str = Field(min_length=1, max_length=128)
+    symbol: str = Field(pattern=SYMBOL_PATTERN)
+    # 各周期趋势，键为周期名(M5/M15/H1/H4)，值为方向 / per-timeframe map
+    trends: dict[str, TrendDir]
+    # 外部编号，仅用于日志/幂等参考，可空 / external id, optional
+    id: str | None = Field(default=None, max_length=128)
+
+
+@router.post("/trend", response_model=dict)
+@limiter.limit("120/minute")
+async def tradingview_trend(request: Request, payload: TrendSignal):
+    """接收多周期趋势：校验密钥 -> upsert 覆盖 -> 广播 TREND_UPDATE。
+    Receive a multi-timeframe trend: verify secret -> upsert -> broadcast.
+    """
+    if not settings.WEBHOOK_SECRET or not secrets.compare_digest(
+        payload.secret.encode("utf-8"), settings.WEBHOOK_SECRET.encode("utf-8")
+    ):
+        raise HTTPException(status_code=401, detail="Webhook 密钥无效 / invalid webhook secret")
+
+    symbol = payload.symbol.upper()
+    tf_map = {str(k): str(v) for k, v in payload.trends.items()}
+    now = datetime.now(timezone.utc)
+
+    db: Session = SessionLocal()
+    try:
+        # 每个品种一条，后来的覆盖前面的 / one row per symbol, upsert
+        row = db.query(Trend).filter(Trend.symbol == symbol).first()
+        if row is None:
+            row = Trend(symbol=symbol, timeframes=json.dumps(tf_map), updated_at=now)
+            db.add(row)
+        else:
+            row.timeframes = json.dumps(tf_map)
+            row.updated_at = now
+        try:
+            db.commit()
+        except IntegrityError:
+            # symbol 唯一约束并发冲突：回滚后重取再写 / unique-constraint race
+            db.rollback()
+            row = db.query(Trend).filter(Trend.symbol == symbol).first()
+            if row is not None:
+                row.timeframes = json.dumps(tf_map)
+                row.updated_at = now
+                db.commit()
+        data = {"symbol": symbol, "timeframes": tf_map, "updatedAt": now.isoformat()}
+    finally:
+        db.close()
+
+    # 广播给所有在线前端 / broadcast to all online clients
+    await manager.broadcast_to_clients({"type": "TREND_UPDATE", "data": data})
+    return {"ok": True, "symbol": symbol}
