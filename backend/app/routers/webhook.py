@@ -125,6 +125,27 @@ async def tradingview_webhook(request: Request, payload: TradingViewSignal):
 TrendDir = Literal["UP", "DOWN", "FLAT"]
 
 
+def _extract_json_block(text: str) -> str | None:
+    """从任意文本中抠出第一个大括号平衡的 JSON 对象。
+    Extract the first brace-balanced JSON object from arbitrary text.
+    用于 TradingView 把说明文字和 alert() 的 JSON 拼在一起发送的情况。
+    Handles the case where TradingView concatenates description text with the JSON.
+    """
+    start = text.find("{")
+    if start < 0:
+        return None
+    depth = 0
+    for i in range(start, len(text)):
+        c = text[i]
+        if c == "{":
+            depth += 1
+        elif c == "}":
+            depth -= 1
+            if depth == 0:
+                return text[start : i + 1]
+    return None
+
+
 class TrendSignal(BaseModel):
     """TradingView 多周期趋势推送载荷 / multi-timeframe trend payload from TradingView."""
 
@@ -148,11 +169,22 @@ async def tradingview_trend(request: Request):
     sends webhooks as text/plain, which would trigger a 422 with a declared JSON body.
     """
     raw = await request.body()
-    try:
-        data_in = json.loads(raw)
-        payload = TrendSignal.model_validate(data_in)
-    except (ValueError, TypeError):
-        raise HTTPException(status_code=422, detail="请求体不是合法 JSON / body is not valid JSON")
+    text = raw.decode("utf-8", errors="ignore").strip()
+    payload = None
+    # 先尝试整体解析；失败则从文本中抠出第一个 {...} JSON 块再解析。
+    # TradingView 有时会把警报说明文字和 alert() 的 JSON 拼在一起发送。
+    # Try whole-body parse first; if it fails, extract the first {...} block.
+    # TradingView may concatenate the alert description with the alert() JSON.
+    for candidate in (text, _extract_json_block(text)):
+        if not candidate:
+            continue
+        try:
+            payload = TrendSignal.model_validate(json.loads(candidate))
+            break
+        except (ValueError, TypeError):
+            continue
+    if payload is None:
+        raise HTTPException(status_code=422, detail="请求体未包含合法趋势 JSON / no valid trend JSON in body")
 
     if not settings.WEBHOOK_SECRET or not secrets.compare_digest(
         payload.secret.encode("utf-8"), settings.WEBHOOK_SECRET.encode("utf-8")
