@@ -829,6 +829,7 @@ export default function SignalsPage() {
           signal={active}
           eaOnline={anyOnline}
           accounts={accounts}
+          quote={quotes[active.symbol]}
           onCancel={() => setActive(null)}
           onConfirm={handleConfirm}
         />

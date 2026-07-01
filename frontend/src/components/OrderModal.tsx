@@ -1,12 +1,13 @@
 // 下单确认弹窗 / Order confirmation modal
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { MT5Account, Signal } from '../api/types'
+import type { MT5Account, Quote, Signal } from '../api/types'
 
 interface Props {
   signal: Signal
   eaOnline: boolean
   accounts: MT5Account[]
+  quote?: Quote
   onCancel: () => void
   onConfirm: (
     volume: number,
@@ -19,7 +20,7 @@ interface Props {
 // 快捷手数预设 / quick-lot presets
 const QUICK_LOTS = [0.01, 0.1, 0.5, 1.0]
 
-export default function OrderModal({ signal, eaOnline, accounts, onCancel, onConfirm }: Props) {
+export default function OrderModal({ signal, eaOnline, accounts, quote, onCancel, onConfirm }: Props) {
   const { t } = useTranslation()
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
@@ -128,7 +129,18 @@ export default function OrderModal({ signal, eaOnline, accounts, onCancel, onCon
           </div>
           <div className="flex justify-between">
             <span className="text-slate-400">{t('signals.entry')}</span>
-            <span className="font-mono text-slate-200">{signal.entry}</span>
+            <div className="text-right">
+              <span className="font-mono text-slate-200">{signal.entry}</span>
+              {quote && (
+                <div className="mt-0.5 flex items-center justify-end gap-1 text-[11px]">
+                  <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-prism-400 animate-breathe" />
+                  <span className="text-slate-500">{t('order.currentPrice')}</span>
+                  <span className="font-mono tabular-nums text-prism-300">
+                    {isBuy ? (quote.ask?.toFixed(quote.digits ?? undefined) ?? '—') : (quote.bid?.toFixed(quote.digits ?? undefined) ?? '—')}
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
