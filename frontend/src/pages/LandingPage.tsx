@@ -93,7 +93,7 @@ export default function LandingPage() {
       <section className="relative mx-auto max-w-7xl px-4 pb-16 pt-20 text-center sm:px-6 sm:pt-28">
         <div className="mx-auto inline-flex animate-fade-in-up">
           <span className="chip animate-glow-pulse">
-            <span className="h-1.5 w-1.5 rounded-full bg-neon-cyan animate-breathe" />
+            <span className="h-1.5 w-1.5 rounded-full bg-prism-400 animate-breathe" />
             {t('landing.badge')}
           </span>
         </div>
@@ -142,7 +142,7 @@ export default function LandingPage() {
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {features.map((f) => (
             <div key={f.title} className="glass-neon group p-6">
-              <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl border border-prism-500/30 bg-prism-600/15 text-prism-300 transition group-hover:text-neon-cyan group-hover:shadow-neon-cyan">
+              <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-inner border border-prism-500/30 bg-prism-600/15 text-prism-300 transition group-hover:text-prism-200 group-hover:shadow-prism">
                 <Icon name={f.icon} />
               </div>
               <h3 className="mb-2 font-display text-lg font-semibold text-slate-100">{t(`landing.${f.title}`)}</h3>
@@ -178,7 +178,7 @@ export default function LandingPage() {
       <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6">
         <div className="glass relative overflow-hidden px-6 py-14 text-center sm:px-12">
           <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-prism-600/30 blur-[100px]" />
-          <div className="pointer-events-none absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-neon-cyan/20 blur-[100px]" />
+          <div className="pointer-events-none absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-prism-700/20 blur-[100px]" />
           <h2 className="relative font-display text-3xl font-bold text-slate-50 sm:text-4xl">{t('landing.ctaTitle')}</h2>
           <p className="relative mx-auto mt-3 max-w-lg text-slate-400">{t('landing.ctaSubtitle')}</p>
           <button onClick={() => navigate('/login?mode=register')} className="btn-primary relative mt-8 px-8 py-3 text-base">

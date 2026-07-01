@@ -37,6 +37,12 @@ export default {
         sans: ['Sora', 'system-ui', 'sans-serif'],
         mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
       },
+      // 统一圆角规范 / unified radius tokens: card 18 / inner 12 / pill 10
+      borderRadius: {
+        card: '18px',
+        inner: '12px',
+        pill: '10px',
+      },
       boxShadow: {
         prism: '0 0 24px rgba(139, 70, 255, 0.35)',
         'prism-lg': '0 0 48px rgba(139, 70, 255, 0.45)',
@@ -50,8 +56,9 @@ export default {
       backgroundImage: {
         'prism-grid':
           'linear-gradient(rgba(139,70,255,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(139,70,255,0.06) 1px, transparent 1px)',
+        // 收敛为紫系单义渐变：品牌/交互统一用紫 / converged to purple-only brand gradient
         'neon-gradient':
-          'linear-gradient(120deg, #33e1ff 0%, #8b46ff 45%, #ff4ddb 100%)',
+          'linear-gradient(120deg, #a779ff 0%, #8b46ff 55%, #cbb4ff 100%)',
         'glass-sheen':
           'linear-gradient(135deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.02) 40%, rgba(255,255,255,0) 60%)',
       },
