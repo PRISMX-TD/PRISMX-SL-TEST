@@ -437,22 +437,27 @@ function FocusView({
         </div>
 
         {hasSignal ? (
-          <div className="mt-3 grid grid-cols-3 gap-2">
-            <div className="min-w-0 rounded-xl bg-white/[0.03] px-1.5 py-2 text-center">
-              <div className="text-[10px] uppercase tracking-wider text-slate-500">{t('signals.colEntry')}</div>
-              <div className="mt-0.5 font-mono text-sm font-semibold tabular-nums tracking-tight text-slate-100">{cur.signal!.entry ?? '-'}</div>
+          <>
+            {cur.signal!.indicator && (
+              <div className="mt-3 text-center text-sm text-slate-300">{cur.signal!.indicator}</div>
+            )}
+            <div className="mt-3 grid grid-cols-3 gap-2">
+              <div className="min-w-0 rounded-xl bg-white/[0.03] px-1.5 py-2 text-center">
+                <div className="text-[10px] uppercase tracking-wider text-slate-500">{t('signals.colEntry')}</div>
+                <div className="mt-0.5 font-mono text-sm font-semibold tabular-nums tracking-tight text-slate-100">{cur.signal!.entry ?? '-'}</div>
+              </div>
+              <div className="min-w-0 rounded-xl border border-down/15 bg-down/5 px-1.5 py-2 text-center">
+                <div className="text-[10px] uppercase tracking-wider text-slate-500">{t('signals.colSl')}</div>
+                <div className="mt-0.5 font-mono text-sm font-semibold tabular-nums tracking-tight text-down">{cur.signal!.stopLoss ?? '-'}</div>
+              </div>
+              <div className="min-w-0 rounded-xl border border-up/15 bg-up/5 px-1.5 py-2 text-center">
+                <div className="text-[10px] uppercase tracking-wider text-slate-500">{t('signals.colTp')}</div>
+                <div className="mt-0.5 font-mono text-sm font-semibold tabular-nums tracking-tight text-up">{cur.signal!.takeProfit ?? '-'}</div>
+              </div>
             </div>
-            <div className="min-w-0 rounded-xl border border-down/15 bg-down/5 px-1.5 py-2 text-center">
-              <div className="text-[10px] uppercase tracking-wider text-slate-500">{t('signals.colSl')}</div>
-              <div className="mt-0.5 font-mono text-sm font-semibold tabular-nums tracking-tight text-down">{cur.signal!.stopLoss ?? '-'}</div>
-            </div>
-            <div className="min-w-0 rounded-xl border border-up/15 bg-up/5 px-1.5 py-2 text-center">
-              <div className="text-[10px] uppercase tracking-wider text-slate-500">{t('signals.colTp')}</div>
-              <div className="mt-0.5 font-mono text-sm font-semibold tabular-nums tracking-tight text-up">{cur.signal!.takeProfit ?? '-'}</div>
-            </div>
-          </div>
+          </>
         ) : (
-          <div className="mt-3 rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2.5 text-sm text-slate-300">
+          <div className="mt-3 rounded-xl bg-white/[0.03] px-3 py-2.5 text-center text-sm text-slate-300">
             {t('signals.focus.waiting')}
           </div>
         )}
@@ -470,7 +475,7 @@ function FocusView({
             </button>
           </div>
         ) : (
-          <div className="mt-3 flex items-center justify-center gap-2 rounded-xl border border-dashed border-white/12 py-2.5 text-xs text-slate-500">
+          <div className="mt-3 flex items-center justify-center gap-2 rounded-xl bg-white/[0.02] py-2.5 text-xs text-slate-500">
             <span className="h-1.5 w-1.5 rounded-full bg-slate-500 animate-breathe" />
             {t('signals.focus.noExecutable')}
           </div>
