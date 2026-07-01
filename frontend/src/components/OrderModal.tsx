@@ -130,16 +130,14 @@ export default function OrderModal({ signal, eaOnline, accounts, quote, onCancel
           <div className="flex justify-between">
             <span className="text-slate-400">{t('signals.entry')}</span>
             <div className="text-right">
-              <span className="font-mono text-slate-200">{signal.entry}</span>
-              {quote && (
-                <div className="mt-0.5 flex items-center justify-end gap-1 text-[11px]">
-                  <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-prism-400 animate-breathe" />
-                  <span className="text-slate-500">{t('order.currentPrice')}</span>
-                  <span className="font-mono tabular-nums text-prism-300">
-                    {isBuy ? (quote.ask?.toFixed(quote.digits ?? undefined) ?? '—') : (quote.bid?.toFixed(quote.digits ?? undefined) ?? '—')}
-                  </span>
-                </div>
-              )}
+              <div className="flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-prism-400 animate-breathe" />
+                <span className="font-mono tabular-nums text-slate-200">
+                  {quote
+                    ? (isBuy ? (quote.ask?.toFixed(quote.digits ?? undefined) ?? signal.entry) : (quote.bid?.toFixed(quote.digits ?? undefined) ?? signal.entry))
+                    : signal.entry}
+                </span>
+              </div>
             </div>
           </div>
         </div>
