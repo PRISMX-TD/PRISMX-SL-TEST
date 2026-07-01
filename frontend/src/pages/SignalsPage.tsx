@@ -493,9 +493,15 @@ function FocusView({
 
         {hasSignal ? (
           <>
-            {cur.signal!.indicator && (
-              <div className="mt-2 text-center text-sm text-slate-300">{cur.signal!.indicator}</div>
-            )}
+            <div className="mt-2 flex items-center gap-2">
+              <span className="font-display text-base font-bold text-slate-100">{cur.symbol}</span>
+              <span className={`tag ${cur.signal!.side === 'BUY' ? 'bg-up/15 text-up' : 'bg-down/15 text-down'}`}>
+                {cur.signal!.side === 'BUY' ? t('common.buy') : t('common.sell')}
+              </span>
+              {cur.signal!.indicator && (
+                <span className="ml-auto text-xs text-slate-400">{cur.signal!.indicator}</span>
+              )}
+            </div>
             <div className="mt-3 grid grid-cols-3 gap-2">
               <div className="min-w-0 rounded-inner bg-white/[0.05] px-1.5 py-2 text-center">
                 <div className="text-[10px] uppercase tracking-wider text-slate-500">{t('signals.colEntry')}</div>
