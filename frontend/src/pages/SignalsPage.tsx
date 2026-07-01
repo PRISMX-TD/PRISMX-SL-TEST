@@ -110,6 +110,34 @@ const TREND_VIS: Record<TrendDir, { arrow: string; color: string }> = {
   FLAT: { arrow: '→', color: '#64748b' },
 }
 
+// 多周期加权：越大周期权重越高 / per-timeframe weights, larger TF weighs more
+const TF_WEIGHT: Record<string, number> = { M5: 1, M15: 1, M30: 2, H1: 3, H4: 3 }
+// 表态阈值：|score| ≥ 此值才看多/看空，中间地带为观望 / stance threshold
+const STANCE_THRESHOLD = 3
+
+// 由多周期趋势加权合成的立场：看多 / 看空 / 观望 / synthesized stance
+type TrendStance = 'BULL' | 'BEAR' | 'NEUTRAL'
+
+// 把一个品种的多周期趋势加权合成一个立场。
+// Weighted synthesis of one symbol's multi-timeframe trends into a single stance.
+function trendStance(trend?: Trend): TrendStance {
+  let score = 0
+  for (const tf of TREND_TFS) {
+    const dir = trend?.timeframes?.[tf]
+    const w = TF_WEIGHT[tf] ?? 1
+    if (dir === 'UP') score += w
+    else if (dir === 'DOWN') score -= w
+  }
+  return score >= STANCE_THRESHOLD ? 'BULL' : score <= -STANCE_THRESHOLD ? 'BEAR' : 'NEUTRAL'
+}
+
+// 立场视觉：颜色 + 光晕 + 圆点 / stance visuals
+const STANCE_TONE: Record<TrendStance, { color: string; glow: string; dot: string }> = {
+  BULL: { color: 'text-up', glow: 'rgba(47,230,160,.28)', dot: '#2fe6a0' },
+  BEAR: { color: 'text-down', glow: 'rgba(255,77,109,.28)', dot: '#ff4d6d' },
+  NEUTRAL: { color: 'text-slate-400', glow: 'rgba(148,163,184,.22)', dot: '#94a3b8' },
+}
+
 // 多周期趋势小组件：英雄卡右上角，五格「周期 + 彩色箭头」。
 // 无趋势数据时灰色 →，等 webhook 推送后自动亮起。
 // Multi-timeframe trend widget: five "timeframe + colored arrow" cells in the hero card corner.
@@ -301,20 +329,28 @@ function FocusView({
       short = 0,
       watch = 0
     for (const e of entries) {
-      if (e.state === 'LONG') long += 1
-      else if (e.state === 'SHORT') short += 1
+      const st = trendStance(trends[e.symbol])
+      if (st === 'BULL') long += 1
+      else if (st === 'BEAR') short += 1
       else watch += 1
     }
     return { long, short, watch, total: entries.length }
-  }, [entries])
+  }, [entries, trends])
 
   if (!cur) return null
 
+  // 立场标签：由多周期趋势加权合成，与交易信号解耦 / stance label from weighted trend
+  const stanceLabel = (st: TrendStance) =>
+    st === 'BULL' ? t('signals.focus.bull') : st === 'BEAR' ? t('signals.focus.bear') : t('signals.focus.neutral')
+  const stanceAdvice = (st: TrendStance) =>
+    st === 'BULL' ? t('signals.focus.adviceBull') : st === 'BEAR' ? t('signals.focus.adviceBear') : t('signals.focus.adviceNeutral')
+  // 交易信号方向标签（其他活跃信号列表用，仍是做多/做空）/ trade-signal side label
   const stateLabel = (s: FocusState) =>
     s === 'LONG' ? t('signals.focus.long') : s === 'SHORT' ? t('signals.focus.short') : t('signals.focus.watch')
   const nameOf = (sym: string) => t(`signals.symbolNames.${sym}`, { defaultValue: '' })
 
-  const tone = FOCUS_TONE[cur.state]
+  const stance = trendStance(trends[cur.symbol])
+  const tone = STANCE_TONE[stance]
   const hasSignal = cur.state !== 'WATCH' && cur.signal != null
   const total = Math.max(1, sentiment.total)
   const longW = Math.round((sentiment.long / total) * 100)
@@ -377,19 +413,23 @@ function FocusView({
         </button>
       </div>
       <div className="mb-4 flex justify-center gap-1.5">
-        {entries.map((e, i) => (
-          <button
-            key={e.symbol}
-            type="button"
-            onClick={() => setFocusIdx(i)}
-            className="h-2 rounded-full transition-all"
-            style={{
-              width: i === idx ? '20px' : '8px',
-              background: i === idx ? FOCUS_DOT[e.state] : FOCUS_DOT[e.state] + '66',
-            }}
-            aria-label={e.symbol}
-          />
-        ))}
+        {entries.map((e, i) => {
+          // 圆点颜色随多周期趋势立场，与英雄卡大字一致 / dots follow trend stance
+          const dot = STANCE_TONE[trendStance(trends[e.symbol])].dot
+          return (
+            <button
+              key={e.symbol}
+              type="button"
+              onClick={() => setFocusIdx(i)}
+              className="h-2 rounded-full transition-all"
+              style={{
+                width: i === idx ? '20px' : '8px',
+                background: i === idx ? dot : dot + '66',
+              }}
+              aria-label={e.symbol}
+            />
+          )
+        })}
       </div>
 
       {/* 移动端单行报价条：仅显示当前品种 / mobile single-line quote bar: current symbol only */}
@@ -415,16 +455,16 @@ function FocusView({
           <div className="text-[11px] uppercase tracking-wider text-slate-500">{t('signals.focus.trendLabel')}</div>
         </div>
         <div className="mt-1 flex items-end justify-between">
-          <div className={`font-display text-5xl font-extrabold leading-none ${tone.color}`}>{stateLabel(cur.state)}</div>
+          <div className={`font-display text-5xl font-extrabold leading-none ${tone.color}`}>{stanceLabel(stance)}</div>
           <MultiTfTrend trend={trends[cur.symbol]} />
         </div>
 
         {/* 全市场情绪条 / market sentiment bar */}
         <div className="mt-4">
           <div className="mb-1 flex items-center justify-between text-[11px]">
-            <span className="text-up">{t('signals.focus.long')} {sentiment.long}</span>
+            <span className="text-up">{t('signals.focus.bull')} {sentiment.long}</span>
             <span className="uppercase tracking-wider text-slate-500">{t('signals.focus.marketSentiment')}</span>
-            <span className="text-down">{t('signals.focus.short')} {sentiment.short}</span>
+            <span className="text-down">{t('signals.focus.bear')} {sentiment.short}</span>
           </div>
           <div className="flex h-2.5 overflow-hidden rounded-full bg-white/10">
             <div style={{ width: `${longW}%`, background: 'linear-gradient(90deg,#1f9e6e,#2fe6a0)' }} />
@@ -436,10 +476,25 @@ function FocusView({
           </div>
         </div>
 
+        {/* 趋势立场解读 / stance interpretation */}
+        <div className="mt-3 rounded-xl bg-white/[0.03] px-3 py-2.5 text-center text-sm text-slate-300">
+          {stanceAdvice(stance)}
+        </div>
+      </div>
+
+      {/* 可执行信号卡（与趋势立场解耦，独立成卡）/ executable signal card, decoupled from stance */}
+      <div className="glass flat-card mt-3 overflow-hidden p-4">
+        <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-slate-400">
+          <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+            <path d="M3 17l5-6 4 4 5-7 4 5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          {t('signals.focus.signalHeading')}
+        </div>
+
         {hasSignal ? (
           <>
             {cur.signal!.indicator && (
-              <div className="mt-3 text-center text-sm text-slate-300">{cur.signal!.indicator}</div>
+              <div className="mt-2 text-center text-sm text-slate-300">{cur.signal!.indicator}</div>
             )}
             <div className="mt-3 grid grid-cols-3 gap-2">
               <div className="min-w-0 rounded-xl bg-white/[0.03] px-1.5 py-2 text-center">
@@ -455,27 +510,20 @@ function FocusView({
                 <div className="mt-0.5 font-mono text-sm font-semibold tabular-nums tracking-tight text-up">{cur.signal!.takeProfit ?? '-'}</div>
               </div>
             </div>
+            <div className="mt-3 flex items-center gap-3">
+              <div className="flex-1 rounded-xl border border-amber-400/20 bg-amber-400/5 px-3 py-2">
+                <div className="text-[10px] uppercase tracking-wider text-slate-500">{t('signals.focus.remainingTtl')}</div>
+                <div className="font-mono text-sm text-amber-400">
+                  {calcCountdown(cur.signal!.expireAt, SIGNAL_LIFESPAN_MS, now)?.text ?? '-'}
+                </div>
+              </div>
+              <button onClick={() => onTrade(cur.signal!)} className="btn-primary flex-1 rounded-xl py-3 text-sm font-semibold">
+                {t('signals.focus.viewDetail')}
+              </button>
+            </div>
           </>
         ) : (
-          <div className="mt-3 rounded-xl bg-white/[0.03] px-3 py-2.5 text-center text-sm text-slate-300">
-            {t('signals.focus.waiting')}
-          </div>
-        )}
-
-        {hasSignal ? (
-          <div className="mt-3 flex items-center gap-3">
-            <div className="flex-1 rounded-xl border border-amber-400/20 bg-amber-400/5 px-3 py-2">
-              <div className="text-[10px] uppercase tracking-wider text-slate-500">{t('signals.focus.remainingTtl')}</div>
-              <div className="font-mono text-sm text-amber-400">
-                {calcCountdown(cur.signal!.expireAt, SIGNAL_LIFESPAN_MS, now)?.text ?? '-'}
-              </div>
-            </div>
-            <button onClick={() => onTrade(cur.signal!)} className="btn-primary flex-1 rounded-xl py-3 text-sm font-semibold">
-              {t('signals.focus.viewDetail')}
-            </button>
-          </div>
-        ) : (
-          <div className="mt-3 flex items-center justify-center gap-2 rounded-xl bg-white/[0.02] py-2.5 text-xs text-slate-500">
+          <div className="mt-2 flex items-center justify-center gap-2 rounded-xl bg-white/[0.02] py-4 text-xs text-slate-500">
             <span className="h-1.5 w-1.5 rounded-full bg-slate-500 animate-breathe" />
             {t('signals.focus.noExecutable')}
           </div>
