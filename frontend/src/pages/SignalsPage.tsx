@@ -439,14 +439,11 @@ function FocusView({
         <QuoteBar quote={quotes[cur.symbol]} />
       </div>
 
-      {/* 英雄卡 + 可执行信号：合并为一体面板 / hero + signal merged into one surface */}
-      <div
-        onTouchStart={onTouchStart}
-        onTouchEnd={onTouchEnd}
-        className="glass animate-fade-in-up overflow-hidden"
-        style={{ boxShadow: `0 8px 32px rgba(0,0,0,.45), 0 0 30px ${tone.glow}, inset 0 1px 0 rgba(255,255,255,.08)` }}
-      >
-        <div className="p-4">
+      {/* 英雄卡 + 可执行信号：拆为两张独立卡（对齐 mockup），去除随立场变的外发光
+          hero + signal as two separate cards per mockup; no stance-colored glow */}
+      <div onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} className="space-y-3">
+        {/* 多周期趋势英雄卡 / multi-TF trend hero card */}
+        <div className="glass animate-fade-in-up p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-slate-400">
             <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
@@ -457,7 +454,7 @@ function FocusView({
           </div>
           <div className="text-[11px] uppercase tracking-wider text-slate-500">{t('signals.focus.trendLabel')}</div>
         </div>
-        <div className="mt-2 flex items-end justify-between">
+        <div className="mt-2.5 flex items-end justify-between">
           <div className={`font-display text-4xl font-extrabold leading-none ${tone.color}`}>{stanceLabel(stance)}</div>
           <MultiTfTrend trend={trends[cur.symbol]} />
         </div>
@@ -469,24 +466,24 @@ function FocusView({
             <span className="uppercase tracking-wider text-slate-500">{t('signals.focus.marketSentiment')}</span>
             <span className="text-down">{t('signals.focus.bear')} {sentiment.short}</span>
           </div>
-          <div className="flex h-2.5 overflow-hidden rounded-full bg-white/10">
+          <div className="flex h-2 overflow-hidden rounded-full bg-white/[0.06]">
             <div style={{ width: `${longW}%`, background: 'linear-gradient(90deg,#1f9e6e,#2fe6a0)' }} />
             <div className="flex-1" />
             <div style={{ width: `${shortW}%`, background: 'linear-gradient(90deg,#ff4d6d,#b3263f)' }} />
           </div>
-          <div className="mt-1 text-center text-[10px] text-slate-500">
+          <div className="mt-1.5 text-center text-[10px] text-slate-500">
             {t('signals.focus.watching')} {sentiment.watch} · {t('signals.focus.symbolsTotal', { n: sentiment.total })}
           </div>
         </div>
 
         {/* 趋势立场解读 / stance interpretation */}
-        <div className="mt-3 rounded-xl bg-white/[0.03] px-3 py-2.5 text-center text-sm text-slate-300">
+        <div className="mt-3 rounded-inner border border-white/[0.08] bg-white/[0.05] px-3 py-2.5 text-center text-[13px] text-slate-300">
           {stanceAdvice(stance)}
         </div>
         </div>
 
-        {/* 可执行信号：同一面板内的下半段，用分隔线相连 / executable signal: lower section within the same surface */}
-        <div className="border-t border-white/[0.08] p-4">
+        {/* 可执行信号：独立卡片 / executable signal: separate card */}
+        <div className="glass p-4">
         <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-slate-400">
           <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
             <path d="M3 17l5-6 4 4 5-7 4 5" strokeLinecap="round" strokeLinejoin="round" />
@@ -500,33 +497,39 @@ function FocusView({
               <div className="mt-2 text-center text-sm text-slate-300">{cur.signal!.indicator}</div>
             )}
             <div className="mt-3 grid grid-cols-3 gap-2">
-              <div className="min-w-0 rounded-xl bg-white/[0.03] px-1.5 py-2 text-center">
+              <div className="min-w-0 rounded-inner bg-white/[0.05] px-1.5 py-2 text-center">
                 <div className="text-[10px] uppercase tracking-wider text-slate-500">{t('signals.colEntry')}</div>
                 <div className="mt-0.5 font-mono text-sm font-semibold tabular-nums tracking-tight text-slate-100">{cur.signal!.entry ?? '-'}</div>
               </div>
-              <div className="min-w-0 rounded-xl border border-down/15 bg-down/5 px-1.5 py-2 text-center">
+              <div className="min-w-0 rounded-inner border border-down/20 bg-down/5 px-1.5 py-2 text-center">
                 <div className="text-[10px] uppercase tracking-wider text-slate-500">{t('signals.colSl')}</div>
                 <div className="mt-0.5 font-mono text-sm font-semibold tabular-nums tracking-tight text-down">{cur.signal!.stopLoss ?? '-'}</div>
               </div>
-              <div className="min-w-0 rounded-xl border border-up/15 bg-up/5 px-1.5 py-2 text-center">
+              <div className="min-w-0 rounded-inner border border-up/20 bg-up/5 px-1.5 py-2 text-center">
                 <div className="text-[10px] uppercase tracking-wider text-slate-500">{t('signals.colTp')}</div>
                 <div className="mt-0.5 font-mono text-sm font-semibold tabular-nums tracking-tight text-up">{cur.signal!.takeProfit ?? '-'}</div>
               </div>
             </div>
-            <div className="mt-3 flex items-center gap-3">
-              <div className="flex-1 rounded-xl border border-prism-500/20 bg-prism-600/5 px-3 py-2">
-                <div className="text-[10px] uppercase tracking-wider text-slate-500">{t('signals.focus.remainingTtl')}</div>
-                <div className="font-mono text-sm text-prism-300">
+            <div className="mt-3">
+              <div className="mb-1 flex items-center justify-between text-[11px]">
+                <span className="uppercase tracking-wider text-slate-500">{t('signals.focus.remainingTtl')}</span>
+                <span className="font-mono text-prism-300">
                   {calcCountdown(cur.signal!.expireAt, SIGNAL_LIFESPAN_MS, now)?.text ?? '-'}
-                </div>
+                </span>
               </div>
-              <button onClick={() => onTrade(cur.signal!)} className="btn-primary flex-1 rounded-xl py-3 text-sm font-semibold">
-                {t('signals.focus.viewDetail')}
-              </button>
+              <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
+                <div
+                  className="h-full rounded-full"
+                  style={{ width: `${Math.round((calcCountdown(cur.signal!.expireAt, SIGNAL_LIFESPAN_MS, now)?.fraction ?? 0) * 100)}%`, background: 'linear-gradient(90deg,#7a2fff,#a779ff)' }}
+                />
+              </div>
             </div>
+            <button onClick={() => onTrade(cur.signal!)} className="btn-primary mt-3 w-full py-2.5 text-sm font-semibold">
+              {t('signals.focus.viewDetail')}
+            </button>
           </>
         ) : (
-          <div className="mt-2 flex items-center justify-center gap-2 rounded-xl bg-white/[0.02] py-4 text-xs text-slate-500">
+          <div className="mt-2 flex items-center justify-center gap-2 rounded-inner bg-white/[0.02] py-4 text-xs text-slate-500">
             <span className="h-1.5 w-1.5 rounded-full bg-slate-500 animate-breathe" />
             {t('signals.focus.noExecutable')}
           </div>
@@ -806,7 +809,7 @@ export default function SignalsPage() {
     <div>
       <div className="mb-5">
         <h2 className="font-display text-2xl font-bold text-slate-100">
-          <span className="neon-text">{t('signals.title')}</span>
+          {t('signals.title')}
         </h2>
         <p className="mt-1 text-sm text-slate-400">{t('signals.subtitle')}</p>
       </div>
