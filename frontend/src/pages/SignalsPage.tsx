@@ -127,6 +127,10 @@ function QuotePanel({ quotes, mt5Online }: { quotes: Record<string, Quote>; mt5O
   const { t } = useTranslation()
   const nameOf = (sym: string) => t(`signals.symbolNames.${sym}`, { defaultValue: '' })
   const rows = Object.values(quotes).sort((a, b) => a.symbol.localeCompare(b.symbol))
+  // 严格按交易商小数位数显示，避免浮点残差（如 1.32386999…）。
+  // Format strictly by broker digits to avoid float noise.
+  const fmtPrice = (v: number, digits?: number) =>
+    typeof digits === 'number' ? v.toFixed(digits) : String(v)
 
   return (
     <div className="glass mt-4 p-4">
@@ -161,8 +165,8 @@ function QuotePanel({ quotes, mt5Online }: { quotes: Record<string, Quote>; mt5O
                 <div className="truncate font-display text-sm font-semibold text-slate-100">{q.symbol}</div>
                 {nameOf(q.symbol) && <div className="truncate text-[10px] text-slate-500">{nameOf(q.symbol)}</div>}
               </div>
-              <div className="text-right font-mono text-sm font-semibold text-up">{q.bid}</div>
-              <div className="text-right font-mono text-sm font-semibold text-down">{q.ask}</div>
+              <div className="text-right font-mono text-sm font-semibold text-up">{fmtPrice(q.bid, q.digits)}</div>
+              <div className="text-right font-mono text-sm font-semibold text-down">{fmtPrice(q.ask, q.digits)}</div>
             </div>
           ))}
         </div>

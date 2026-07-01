@@ -72,6 +72,7 @@ export interface Quote {
   symbol: string
   bid: number
   ask: number
+  digits?: number
   time?: string
 }
 

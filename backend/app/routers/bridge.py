@@ -248,6 +248,7 @@ class BridgeQuote(BaseModel):
     symbol: str = Field(max_length=32)
     bid: float
     ask: float
+    digits: int | None = Field(default=None, ge=0, le=10)
     ts: str | None = Field(default=None, max_length=40)
 
 

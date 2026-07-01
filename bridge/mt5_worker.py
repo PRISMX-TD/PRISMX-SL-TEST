@@ -138,10 +138,15 @@ def _quotes_payload(base_symbols: list[str], suffix: str = "") -> list:
         tick = mt5.symbol_info_tick(broker_sym)
         if tick is None or tick.bid <= 0 or tick.ask <= 0:
             continue
+        # 交易商的小数位数，按其严格四舍五入，消除浮点残差（如 1.32386999…）。
+        # Broker's decimal digits; round strictly to remove float noise.
+        info = mt5.symbol_info(broker_sym)
+        digits = int(info.digits) if info is not None else 5
         out.append({
             "symbol": base,
-            "bid": float(tick.bid),
-            "ask": float(tick.ask),
+            "bid": round(float(tick.bid), digits),
+            "ask": round(float(tick.ask), digits),
+            "digits": digits,
         })
     return out
 
