@@ -16,6 +16,7 @@ import logging
 import os
 import sys
 import threading
+import time
 import tkinter as tk
 import webbrowser
 from ctypes import wintypes
@@ -26,7 +27,7 @@ from urllib import error, request
 from mt5_worker import poll_terminal
 
 # ---------- 版本 / Version ----------
-APP_VERSION = "1.3.0"
+APP_VERSION = "1.3.1"
 
 # ---------- 更新检测 / Update check ----------
 # 通过 GitHub Releases 检查是否有更新的安装包版本。
@@ -34,6 +35,9 @@ APP_VERSION = "1.3.0"
 GITHUB_OWNER_REPO = "PRISMX-TD/PRISMX-SIGNAL-LAB"
 LATEST_RELEASE_API = f"https://api.github.com/repos/{GITHUB_OWNER_REPO}/releases/latest"
 RELEASES_PAGE = f"https://github.com/{GITHUB_OWNER_REPO}/releases/latest"
+# 更新检查间隔（秒）：启动检查一次，之后每 10 分钟复查一次。
+# Update check interval (seconds): once on launch, then every 10 minutes.
+UPDATE_CHECK_INTERVAL = 600
 
 # ---------- 配置 / Configuration ----------
 # 线上后端地址（所有用户默认连接，无需手动填写）。
@@ -694,12 +698,19 @@ class BridgeGUI:
         ).pack(anchor="w", padx=32, pady=(8, 12))
 
     def _start_update_check(self):
-        """后台线程检查 GitHub 是否有更新版本 / check GitHub for a newer version on a thread."""
+        """后台线程检查 GitHub 是否有更新版本 / check GitHub for a newer version on a thread.
+
+        启动时立即检查一次，之后每 UPDATE_CHECK_INTERVAL 秒复查一次。
+        Check once on launch, then re-check every UPDATE_CHECK_INTERVAL seconds.
+        """
         def worker():
-            latest = check_latest_version()
-            if latest and is_newer_version(latest, APP_VERSION):
-                # 切回 UI 线程更新提示条 / marshal back to the UI thread
-                self.root.after(0, lambda: self._show_update(latest))
+            while True:
+                latest = check_latest_version()
+                if latest and is_newer_version(latest, APP_VERSION):
+                    # 切回 UI 线程更新提示条 / marshal back to the UI thread
+                    self.root.after(0, lambda v=latest: self._show_update(v))
+                    return  # 已提示则停止轮询 / stop polling once notified
+                time.sleep(UPDATE_CHECK_INTERVAL)
         threading.Thread(target=worker, daemon=True).start()
 
     def _show_update(self, latest: str):
