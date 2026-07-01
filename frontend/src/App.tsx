@@ -11,6 +11,7 @@ import OrdersPage from './pages/OrdersPage'
 import DownloadPage from './pages/DownloadPage'
 import AccountPage from './pages/AccountPage'
 import type { ReactNode } from 'react'
+import PwaBackGuard from './components/PwaBackGuard'
 
 function Protected({ children }: { children: ReactNode }) {
   const { isAuthed } = useAuth()
@@ -29,6 +30,7 @@ export default function App() {
     <AuthProvider>
       <PrefsProvider>
         <BrowserRouter>
+          <PwaBackGuard>
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<LoginPage />} />
@@ -48,6 +50,7 @@ export default function App() {
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
+          </PwaBackGuard>
         </BrowserRouter>
       </PrefsProvider>
     </AuthProvider>
