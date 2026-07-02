@@ -662,6 +662,25 @@
     border-color: var(--line-hi);
   }
 
+  /* ── 卡片标题行 / card header ── */
+  .card-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 2px 12px;
+  }
+  .card-head h3 {
+    font-size: 15px;
+    font-weight: 700;
+    color: #fff;
+    margin: 0;
+  }
+  .card-head .aux {
+    margin-left: auto;
+    font-size: 12px;
+    color: var(--text-3);
+  }
+
   /* ── 行情表 / quotes table ── */
   .qt-table-wrap {
     overflow-x: auto;
