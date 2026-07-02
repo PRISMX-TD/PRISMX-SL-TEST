@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.security import hash_password, verify_password
-from app.models import EABinding, MT5Account, User, UserPref
+from app.models import MT5Account, User, UserPref
 from app.services.deps import get_current_user
 
 router = APIRouter(prefix="/auth", tags=["account"])
@@ -58,7 +58,8 @@ def get_account(
 
 class ChangePasswordRequest(BaseModel):
     old_password: str | None = Field(None, description="旧密码（首次设置密码时可为空）")
-    new_password: str = Field(..., min_length=6, max_length=128)
+    # 与注册的密码规则保持一致（≥8 位）/ same rule as registration (≥8 chars)
+    new_password: str = Field(..., min_length=8, max_length=128)
 
 
 @router.post("/password")

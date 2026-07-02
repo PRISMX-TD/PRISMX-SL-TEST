@@ -27,25 +27,11 @@ class User(Base):
     created_at = Column(DateTime, default=_now)
 
 
-class EABinding(Base):
-    """EA 绑定关系 / EA binding for a user."""
-    __tablename__ = "ea_bindings"
-
-    id = Column(String, primary_key=True, default=_uuid)
-    user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
-    mt5_login = Column(String, nullable=True)
-    mt5_server = Column(String, nullable=True)
-    # 用户设置的品种后缀，如 ".sc" / ".s" / user-set symbol suffix, e.g. ".sc"
-    symbol_suffix = Column(String, nullable=True, default="")
-    # EA 上报的账户信息 / account info reported by EA
-    account_name = Column(String, nullable=True)
-    account_currency = Column(String, nullable=True)
-    balance = Column(Float, nullable=True)
-    equity = Column(Float, nullable=True)
-    leverage = Column(Integer, nullable=True)
-    company = Column(String, nullable=True)
-    online = Column(Boolean, default=False)
-    last_heartbeat = Column(DateTime, nullable=True)
+# 说明：旧的 EABinding（ea_bindings 表，EA 单账号绑定）已随 EA 接入方式移除。
+# 生产库中的旧表保留不删，只是不再读写；多账号统一使用 MT5Account。
+# Note: the legacy EABinding model (ea_bindings, single-account EA binding) was
+# removed together with the EA integrations. The old table is left in place in
+# production but no longer read or written; MT5Account is the single source.
 
 
 class MT5Account(Base):

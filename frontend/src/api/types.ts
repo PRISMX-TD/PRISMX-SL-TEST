@@ -54,20 +54,6 @@ export interface MT5Account {
   lastHeartbeat?: string | null
 }
 
-export interface EAStatus {
-  online: boolean
-  mt5Login: string | null
-  mt5Server?: string | null
-  symbolSuffix?: string | null
-  accountName?: string | null
-  accountCurrency?: string | null
-  balance?: number | null
-  equity?: number | null
-  leverage?: number | null
-  company?: string | null
-  lastHeartbeat?: string | null
-}
-
 export interface Quote {
   symbol: string
   bid: number
@@ -102,7 +88,7 @@ export interface Position {
 }
 
 export interface WSMessage {
-  type: 'AUTH_OK' | 'AUTH_FAIL' | 'SIGNAL_NEW' | 'SIGNAL_EXPIRED' | 'ORDER_UPDATE' | 'EA_STATUS' | 'POSITIONS' | 'ACCOUNTS_STATUS' | 'QUOTES' | 'TREND_UPDATE'
+  type: 'AUTH_OK' | 'AUTH_FAIL' | 'SIGNAL_NEW' | 'SIGNAL_EXPIRED' | 'ORDER_UPDATE' | 'POSITIONS' | 'ACCOUNTS_STATUS' | 'QUOTES' | 'TREND_UPDATE'
   data?: unknown
   reason?: string
   userId?: string

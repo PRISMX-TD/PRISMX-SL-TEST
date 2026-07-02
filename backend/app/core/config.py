@@ -106,6 +106,13 @@ class Settings(BaseSettings):
     # Order ack timeout (seconds): delivered-but-unacked orders may be re-delivered.
     ORDER_ACK_TIMEOUT_SECONDS: int = 60
 
+    # 订单待执行超时（秒）：落库后超过此时长仍未执行的 PENDING 指令自动作废为
+    # FAILED，防止桥接离线期间的陈旧指令在很久之后按过时价格成交。
+    # Pending-order timeout (seconds): PENDING commands not executed within this
+    # window are voided to FAILED, so a stale command can't fill at an outdated
+    # price after the bridge comes back online much later.
+    ORDER_PENDING_TIMEOUT_SECONDS: int = 300
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

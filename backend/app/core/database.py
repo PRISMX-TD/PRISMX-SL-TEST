@@ -38,27 +38,15 @@ def _migrate_columns() -> None:
     """轻量迁移：为已存在的旧表补充新列（SQLite 不会自动加列）。
     Lightweight migration: add new columns to existing tables (SQLite won't).
     """
-    # 列名 -> SQL 类型 / column name -> SQL type
-    ea_columns = {
-        "symbol_suffix": "VARCHAR",
-        "account_name": "VARCHAR",
-        "account_currency": "VARCHAR",
-        "balance": "FLOAT",
-        "equity": "FLOAT",
-        "leverage": "INTEGER",
-        "company": "VARCHAR",
-    }
     # 跨数据库的列类型映射 / cross-DB column type mapping
     is_postgres = settings.DATABASE_URL.startswith("postgres")
     datetime_type = "TIMESTAMP" if is_postgres else "DATETIME"
 
     inspector = inspect(engine)
-    if "ea_bindings" in inspector.get_table_names():
-        existing = {c["name"] for c in inspector.get_columns("ea_bindings")}
-        with engine.begin() as conn:
-            for name, col_type in ea_columns.items():
-                if name not in existing:
-                    conn.execute(text(f"ALTER TABLE ea_bindings ADD COLUMN {name} {col_type}"))
+
+    # 旧 ea_bindings 表已随 EA 接入方式停用：不再迁移、不再读写（生产库保留不删）。
+    # The legacy ea_bindings table is retired with the EA integrations: no longer
+    # migrated, read or written (kept in place in production).
 
     # orders 表：补充新列 / add new columns on orders
     if "orders" in inspector.get_table_names():

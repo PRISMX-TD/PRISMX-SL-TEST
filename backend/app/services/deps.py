@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import decode_access_token
-from app.models import Order, User
+from app.models import User
 
 
 def get_current_user(

@@ -1,5 +1,5 @@
-"""连接管理器：维护 user_id 与 EA / 前端 WebSocket 的映射。
-Connection manager: maps user_id to EA and client WebSocket connections.
+"""连接管理器：维护 user_id 与前端 WebSocket 的映射。
+Connection manager: maps user_id to client WebSocket connections.
 """
 import asyncio
 from datetime import datetime, timezone
@@ -9,8 +9,6 @@ from fastapi import WebSocket
 
 class ConnectionManager:
     def __init__(self) -> None:
-        # user_id -> EA WebSocket 连接 / EA connection per user
-        self._ea: dict[str, WebSocket] = {}
         # user_id -> 前端连接集合 / set of client connections per user
         self._clients: dict[str, set[WebSocket]] = {}
         # user_id -> 最近一次持仓快照 / latest positions snapshot per user
@@ -48,37 +46,6 @@ class ConnectionManager:
 
     def get_quotes(self, user_id: str) -> list:
         return list(self._quotes.get(user_id, {}).values())
-
-    # ---------- EA 连接 / EA connections ----------
-    async def register_ea(self, user_id: str, ws: WebSocket) -> None:
-        async with self._lock:
-            # 同一用户旧连接被新连接接管 / new connection takes over the old one
-            old = self._ea.get(user_id)
-            if old is not None and old is not ws:
-                try:
-                    await old.close()
-                except Exception:
-                    pass
-            self._ea[user_id] = ws
-
-    async def unregister_ea(self, user_id: str, ws: WebSocket) -> None:
-        async with self._lock:
-            if self._ea.get(user_id) is ws:
-                self._ea.pop(user_id, None)
-
-    def is_ea_online(self, user_id: str) -> bool:
-        return user_id in self._ea
-
-    async def send_to_ea(self, user_id: str, message: dict) -> bool:
-        """向指定用户的 EA 下发消息 / send a message to a user's EA."""
-        ws = self._ea.get(user_id)
-        if ws is None:
-            return False
-        try:
-            await ws.send_json(message)
-            return True
-        except Exception:
-            return False
 
     # ---------- 前端连接 / Client connections ----------
     async def register_client(self, user_id: str, ws: WebSocket) -> None:

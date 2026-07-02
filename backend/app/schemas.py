@@ -34,33 +34,10 @@ class AuthResponse(BaseModel):
     user: UserOut
 
 
-# ---------- EA 绑定 / EA binding ----------
+# ---------- API Token / MT5 连接凭证 ----------
 class EATokenOut(BaseModel):
     apiToken: str
     boundAccount: str | None = None
-
-
-class MT5AccountRequest(BaseModel):
-    mt5Login: str = Field(pattern=LOGIN_PATTERN)
-    mt5Server: str = Field(min_length=1, max_length=64)
-
-
-class SymbolSuffixRequest(BaseModel):
-    symbolSuffix: str = Field(default="", pattern=SUFFIX_PATTERN)
-
-
-class EAStatusOut(BaseModel):
-    online: bool
-    mt5Login: str | None = None
-    mt5Server: str | None = None
-    symbolSuffix: str | None = None
-    accountName: str | None = None
-    accountCurrency: str | None = None
-    balance: float | None = None
-    equity: float | None = None
-    leverage: int | None = None
-    company: str | None = None
-    lastHeartbeat: datetime | None = None
 
 
 # ---------- 多账号 / Multi-account ----------

@@ -2,6 +2,7 @@
 Bridge router: the Python desktop app reports multiple MT5 accounts and
 executes order commands via REST + API token.
 """
+import logging
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, Header, HTTPException
@@ -12,9 +13,12 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import authenticate_api_token
 from app.models import MT5Account, Order, Signal, User
+from app.routers.orders import is_stale_pending, order_update_payload, void_stale_order
 from app.schemas import LOGIN_PATTERN, SUFFIX_PATTERN, AccountSuffixRequest, MT5AccountOut
 from app.services.connection_manager import manager
 from app.services.deps import get_current_user
+
+logger = logging.getLogger("prismx.bridge")
 
 router = APIRouter(prefix="/bridge", tags=["bridge"])
 
@@ -125,7 +129,15 @@ async def bridge_poll(
         .all()
     )
     commands = []
+    voided: list[Order] = []
     for o in pending:
+        # 超时未执行的陈旧指令：作废而非下发，防止按过时价格成交。
+        # Stale command past the pending timeout: void instead of dispatching,
+        # so it can't fill at an outdated price.
+        if is_stale_pending(o, now):
+            void_stale_order(o)
+            voided.append(o)
+            continue
         # 跳过已下发且仍在等待回执窗口内的订单 / skip recently delivered, still within ack window
         if o.delivered and o.delivered_at is not None:
             last = o.delivered_at
@@ -169,6 +181,11 @@ async def bridge_poll(
         o.delivered_at = now
     db.commit()
 
+    # 推送被作废订单的状态给前端 / push voided orders' status to the client
+    for o in voided:
+        db.refresh(o)
+        await manager.push_to_client(user.id, order_update_payload(o))
+
     return {"commands": commands}
 
 
@@ -201,6 +218,9 @@ async def bridge_result(
     if order.status in ("FILLED", "REJECTED"):
         return {"ok": True, "duplicate": True}
 
+    # 真实回执覆盖状态（包括迟到回执纠正已超时作废的 FAILED——实际执行结果为准）。
+    # The genuine result wins, including a late result correcting a timed-out
+    # FAILED order — reality beats our assumption.
     order.status = "FILLED" if req.success else "REJECTED"
     order.mt5_ticket = req.mt5Ticket
     order.filled_price = req.filledPrice
@@ -208,24 +228,7 @@ async def bridge_result(
     db.commit()
     db.refresh(order)
 
-    await manager.push_to_client(user.id, {
-        "type": "ORDER_UPDATE",
-        "data": {
-            "id": order.id,
-            "clientOrderId": order.client_order_id,
-            "signalId": order.signal_id,
-            "symbol": order.symbol,
-            "side": order.side,
-            "volume": order.volume,
-            "mt5Login": order.mt5_login,
-            "status": order.status,
-            "mt5Ticket": order.mt5_ticket,
-            "filledPrice": order.filled_price,
-            "message": order.message,
-            "createdAt": order.created_at.isoformat(),
-            "updatedAt": order.updated_at.isoformat(),
-        },
-    })
+    await manager.push_to_client(user.id, order_update_payload(order))
     return {"ok": True}
 
 
@@ -373,5 +376,6 @@ async def offline_monitor_loop() -> None:
             finally:
                 db.close()
         except Exception:
-            # 后台任务不因单次异常退出 / never let the loop die on a transient error
-            pass
+            # 后台任务不因单次异常退出，但必须留下日志便于排查。
+            # Never let the loop die on a transient error, but do log it.
+            logger.exception("offline_monitor_loop error")

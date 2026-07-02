@@ -1,5 +1,5 @@
 // REST 客户端封装 / REST client wrapper
-import type { Signal, Order, EAStatus, User, MT5Account, Trend } from './types'
+import type { Signal, Order, User, MT5Account, Trend } from './types'
 
 const TOKEN_KEY = 'prismx_token'
 
@@ -140,21 +140,10 @@ export const accountApi = {
     }),
 }
 
-// EA 绑定 / EA binding
+// API Token（连接 MT5 用）/ API token for connecting MT5
 export const eaApi = {
   getToken: () => request<{ apiToken: string; boundAccount: string | null }>('/ea/token'),
   resetToken: () => request<{ apiToken: string }>('/ea/token/reset', { method: 'POST' }),
-  registerAccount: (mt5Login: string, mt5Server: string) =>
-    request<{ ok: boolean }>('/ea/account', {
-      method: 'POST',
-      body: JSON.stringify({ mt5Login, mt5Server }),
-    }),
-  setSuffix: (symbolSuffix: string) =>
-    request<{ ok: boolean; symbolSuffix: string }>('/ea/suffix', {
-      method: 'POST',
-      body: JSON.stringify({ symbolSuffix }),
-    }),
-  status: () => request<EAStatus>('/ea/status'),
 }
 
 // 账户信息 / User account (profile, password)

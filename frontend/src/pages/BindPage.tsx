@@ -2,7 +2,7 @@
 // Connect MT5 page: connect MT5 accounts via the PRISMX Bridge app.
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { eaApi } from '../api/client'
+import { accountApi, eaApi } from '../api/client'
 import { useLive } from '../store/live'
 import { fmtTime } from '../api/utils'
 
@@ -44,8 +44,11 @@ export default function BindPage() {
     setApiToken(res.apiToken)
   }
 
+  // 后缀按账号保存（Bridge 上报的账号）；无账号时按钮置灰。
+  // Suffix is saved per account (as reported by the bridge); disabled with no account.
   const saveSuffix = async () => {
-    await eaApi.setSuffix(suffix.trim())
+    if (!primary) return
+    await accountApi.setSuffix(primary.login, suffix.trim())
     setSuffixSaved(true)
     setTimeout(() => setSuffixSaved(false), 2000)
     refreshAll()
@@ -214,9 +217,16 @@ export default function BindPage() {
                 onChange={(e) => setSuffix(e.target.value)}
               />
             </div>
-            <button onClick={saveSuffix} className="btn-primary w-full py-2 text-sm">
+            <button
+              onClick={saveSuffix}
+              disabled={!primary}
+              className="btn-primary w-full py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+            >
               {suffixSaved ? t('bind.saved') : t('bind.saveSuffix')}
             </button>
+            {!primary && (
+              <p className="text-xs text-slate-500">{t('bind.suffixNeedAccount')}</p>
+            )}
           </div>
         </div>
 

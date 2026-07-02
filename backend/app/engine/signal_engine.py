@@ -7,6 +7,7 @@ Local stage uses synthetic price series to demo an MA-cross + RSI-filter strateg
 swap _get_price_series to plug in real market data.
 """
 import asyncio
+import logging
 import random
 from datetime import datetime, timedelta, timezone
 
@@ -18,7 +19,9 @@ from app.core.database import SessionLocal
 from app.models import Signal
 from app.schemas import SignalOut
 from app.services.connection_manager import manager
-from app.services.push_dispatch import dispatch_push
+from app.services.push_dispatch import dispatch_push_async
+
+logger = logging.getLogger("prismx.engine")
 
 SYMBOLS = ["EURUSD", "GBPUSD", "USDJPY", "XAUUSD", "BTCUSD"]
 
@@ -191,10 +194,8 @@ async def signal_loop() -> None:
 
             # 推送新信号给所有前端 / broadcast new signal to all clients
             await manager.broadcast_to_clients({"type": "SIGNAL_NEW", "data": payload})
-            # Web Push 通知（后台异步，不阻塞引擎）/ web push (non-blocking inline, engine keeps ticking)
-            try:
-                dispatch_push(sig)
-            except Exception:
-                pass
-        except Exception as exc:  # 引擎不可因单次异常退出 / engine must not die on a single error
-            print(f"[signal_engine] error: {exc}")
+            # Web Push 通知：线程池执行，不阻塞引擎与事件循环。
+            # Web push runs in a thread pool; the engine and event loop keep ticking.
+            await dispatch_push_async(sig)
+        except Exception:  # 引擎不可因单次异常退出 / engine must not die on a single error
+            logger.exception("signal_loop error")

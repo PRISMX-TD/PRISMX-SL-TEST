@@ -1,8 +1,8 @@
 // 实时数据共享状态：EA 状态、信号、订单、持仓。
 // Shared live state: EA status, signals, orders, positions.
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react'
-import type { EAStatus, MT5Account, Order, Position, Quote, Signal, Trend, WSMessage } from '../api/types'
-import { accountApi, eaApi, orderApi, signalApi, trendApi } from '../api/client'
+import type { MT5Account, Order, Position, Quote, Signal, Trend, WSMessage } from '../api/types'
+import { accountApi, orderApi, signalApi, trendApi } from '../api/client'
 import { useClientSocket } from './useClientSocket'
 
 interface LiveContextValue {
@@ -13,7 +13,6 @@ interface LiveContextValue {
   quotes: Record<string, Quote>
   // 多周期趋势 {symbol: Trend}（由 TradingView 经 webhook 推送）/ trends pushed via webhook
   trends: Record<string, Trend>
-  eaStatus: EAStatus
   accounts: MT5Account[]
   // 首屏数据是否加载完成 / whether the first data load has completed
   loaded: boolean
@@ -51,21 +50,18 @@ export function LiveProvider({ children }: { children: ReactNode }) {
   const [positions, setPositions] = useState<Position[]>([])
   const [quotes, setQuotes] = useState<Record<string, Quote>>({})
   const [trends, setTrends] = useState<Record<string, Trend>>({})
-  const [eaStatus, setEaStatus] = useState<EAStatus>({ online: false, mt5Login: null })
   const [accounts, setAccounts] = useState<MT5Account[]>([])
   const [loaded, setLoaded] = useState(false)
 
   const refreshAll = useCallback(async () => {
-    const [sig, ord, st, acc, trd] = await Promise.all([
+    const [sig, ord, acc, trd] = await Promise.all([
       signalApi.list().catch(() => ({ signals: [] })),
       orderApi.list().catch(() => ({ orders: [] })),
-      eaApi.status().catch(() => ({ online: false, mt5Login: null }) as EAStatus),
       accountApi.list().catch(() => ({ accounts: [] })),
       trendApi.list().catch(() => ({ trends: [] })),
     ])
     setSignals(capExpired(sig.signals))
     setOrders(ord.orders)
-    setEaStatus(st)
     setAccounts(acc.accounts)
     setTrends(Object.fromEntries((trd.trends || []).map((t) => [t.symbol, t])))
     setLoaded(true)
@@ -112,9 +108,6 @@ export function LiveProvider({ children }: { children: ReactNode }) {
         })
         break
       }
-      case 'EA_STATUS':
-        setEaStatus((prev) => ({ ...prev, ...(msg.data as EAStatus) }))
-        break
       case 'POSITIONS':
         setPositions((msg.data as Position[]) || [])
         break
@@ -157,7 +150,7 @@ export function LiveProvider({ children }: { children: ReactNode }) {
 
   return (
     <LiveContext.Provider
-      value={{ signals, orders, positions, quotes, trends, eaStatus, accounts, loaded, anyOnline, onlineAccounts, refreshAll }}
+      value={{ signals, orders, positions, quotes, trends, accounts, loaded, anyOnline, onlineAccounts, refreshAll }}
     >
       {children}
     </LiveContext.Provider>

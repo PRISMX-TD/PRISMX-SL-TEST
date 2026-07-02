@@ -1,0 +1,4 @@
+# 测试依赖（不装到生产）/ test-only dependencies (not for production)
+-r requirements.txt
+pytest
+httpx

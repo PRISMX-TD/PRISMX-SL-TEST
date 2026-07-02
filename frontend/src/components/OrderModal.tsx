@@ -5,7 +5,6 @@ import type { MT5Account, Quote, Signal } from '../api/types'
 
 interface Props {
   signal: Signal
-  eaOnline: boolean
   accounts: MT5Account[]
   quote?: Quote
   onCancel: () => void
@@ -20,7 +19,7 @@ interface Props {
 // 快捷手数预设 / quick-lot presets
 const QUICK_LOTS = [0.01, 0.1, 0.5, 1.0]
 
-export default function OrderModal({ signal, eaOnline, accounts, quote, onCancel, onConfirm }: Props) {
+export default function OrderModal({ signal, accounts, quote, onCancel, onConfirm }: Props) {
   const { t } = useTranslation()
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
@@ -79,9 +78,9 @@ export default function OrderModal({ signal, eaOnline, accounts, quote, onCancel
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // 是否可下单：有在线 EA，或选中了一个在线账号 / can place: EA online or an account selected
+  // 是否可下单：选中了一个在线的 Bridge 账号 / can place: an online bridge account selected
   const hasAccounts = onlineAccounts.length > 0
-  const canSubmit = hasAccounts ? !!login : eaOnline
+  const canSubmit = hasAccounts && !!login
 
   // 离线提示分情况：从未连接 / 连过但都掉线 / no-connection messaging by case
   const offlineMsg = accounts.length === 0 ? t('order.noBridge') : t('order.allOffline')
@@ -100,7 +99,7 @@ export default function OrderModal({ signal, eaOnline, accounts, quote, onCancel
     const tpNum = tp.trim() === '' ? null : parseFloat(tp)
     setSubmitting(true)
     try {
-      await onConfirm(vol, hasAccounts ? login : null, slNum, tpNum)
+      await onConfirm(vol, login || null, slNum, tpNum)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'error')
     } finally {
@@ -256,8 +255,12 @@ export default function OrderModal({ signal, eaOnline, accounts, quote, onCancel
           </div>
         )}
 
-        <p className="mb-4 rounded-lg border border-prism-600/30 bg-prism-600/10 px-3 py-2 text-xs leading-relaxed text-prism-300">
+        <p className="mb-2 rounded-lg border border-prism-600/30 bg-prism-600/10 px-3 py-2 text-xs leading-relaxed text-prism-300">
           {t('order.riskNote')}
+        </p>
+        {/* 超时自动取消说明 / pending-timeout notice */}
+        <p className="mb-4 px-1 text-[11px] leading-relaxed text-slate-500">
+          {t('order.timeoutNote')}
         </p>
 
         {!canSubmit && (

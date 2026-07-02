@@ -39,6 +39,7 @@ bridge/build/
 bridge/dist/
 bridge/*.spec
 bridge/build_log.txt
+bridge/*.log
 
 # ===== 文档 / Markdown（不纳入仓库）=====
 *.md

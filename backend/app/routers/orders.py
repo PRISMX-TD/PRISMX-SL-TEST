@@ -1,11 +1,23 @@
-"""下单路由：提交下单、查询订单 / Orders router: place & query orders."""
-from datetime import datetime, timezone
+"""下单路由：提交下单、查询订单 / Orders router: place & query orders.
+
+所有指令落库为 PENDING，由 PRISMX Bridge 轮询 /api/bridge/poll 拉取执行；
+超过 ORDER_PENDING_TIMEOUT_SECONDS 未执行的指令自动作废为 FAILED，
+防止桥接离线期间的陈旧指令在很久之后按过时价格成交。
+All commands are persisted as PENDING and fetched by the PRISMX Bridge via
+/api/bridge/poll. Commands not executed within ORDER_PENDING_TIMEOUT_SECONDS
+are voided to FAILED so a stale command can't fill at an outdated price after
+the bridge comes back online much later.
+"""
+import asyncio
+import logging
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.database import get_db
-from app.models import EABinding, MT5Account, Order, Signal, User
+from app.models import MT5Account, Order, Signal, User
 from app.schemas import (
     ClosePositionRequest,
     ModifyPositionRequest,
@@ -15,7 +27,16 @@ from app.schemas import (
 from app.services.connection_manager import manager
 from app.services.deps import get_current_user, validate_order
 
+logger = logging.getLogger("prismx.orders")
+
 router = APIRouter(prefix="/orders", tags=["orders"])
+
+# 超时作废的统一提示文案 / message stamped on voided stale orders
+STALE_ORDER_MESSAGE = (
+    "指令超时未执行，已自动取消。如已开启桥接请重新下单"
+    " / Command timed out before execution and was cancelled automatically."
+    " Re-place the order once the bridge is online."
+)
 
 
 def _serialize(o: Order) -> OrderOut:
@@ -38,14 +59,39 @@ def _serialize(o: Order) -> OrderOut:
     )
 
 
+def order_update_payload(o: Order) -> dict:
+    """构造前端 ORDER_UPDATE 推送载荷 / build the ORDER_UPDATE push payload."""
+    return {
+        "type": "ORDER_UPDATE",
+        "data": _serialize(o).model_dump(mode="json"),
+    }
+
+
+def is_stale_pending(o: Order, now: datetime | None = None) -> bool:
+    """判断一条 PENDING 订单是否已超时 / whether a PENDING order timed out."""
+    if o.status != "PENDING" or o.created_at is None:
+        return False
+    now = now or datetime.now(timezone.utc)
+    created = o.created_at
+    if created.tzinfo is None:
+        created = created.replace(tzinfo=timezone.utc)
+    return created < now - timedelta(seconds=settings.ORDER_PENDING_TIMEOUT_SECONDS)
+
+
+def void_stale_order(o: Order) -> None:
+    """把超时订单置为 FAILED（不提交事务）/ mark a stale order FAILED (no commit)."""
+    o.status = "FAILED"
+    o.message = STALE_ORDER_MESSAGE
+
+
 @router.post("", response_model=OrderOut)
 async def place_order(
     req: OrderRequest,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """提交下单：风控 + 幂等 + 路由到该用户 EA。
-    Place an order: risk check + idempotency + route to the user's EA.
+    """提交下单：风控 + 幂等，落库为 PENDING 等待桥接拉取。
+    Place an order: risk check + idempotency; persist as PENDING for the bridge.
     """
     # 1) 风控校验：若指定目标账号，按其净值粗估手数上限。
     #    Risk validation: if a target account is given, cap volume by its equity.
@@ -70,7 +116,6 @@ async def place_order(
         return _serialize(existing)
 
     # 3) 取信号的入场价与止损止盈（若提供 signalId）/ fetch entry, SL & TP from signal
-    entry = 0.0
     stop_loss = 0.0
     take_profit = 0.0
     if req.signalId:
@@ -89,7 +134,6 @@ async def place_order(
                     status_code=409,
                     detail="信号已过期，无法下单 / Signal expired, cannot place order",
                 )
-            entry = sig.entry or 0.0
             stop_loss = sig.stop_loss or 0.0
             take_profit = sig.take_profit or 0.0
 
@@ -99,7 +143,7 @@ async def place_order(
     if req.takeProfit is not None:
         take_profit = req.takeProfit
 
-    # 4) 落库为 PENDING / persist as PENDING
+    # 4) 落库为 PENDING，等待桥接轮询拉取 / persist as PENDING for the bridge to poll
     order = Order(
         user_id=user.id,
         signal_id=req.signalId,
@@ -116,44 +160,6 @@ async def place_order(
     db.add(order)
     db.commit()
     db.refresh(order)
-
-    # 5) 路由到该用户的 EA（WebSocket 版即时下发）/ route to WS EA if connected
-    # 后缀优先取目标账号（多账号），回退到旧的单一绑定。
-    # Suffix: prefer the target account (multi-account), fall back to the legacy binding.
-    suffix = ""
-    if req.mt5Login:
-        acc = (
-            db.query(MT5Account)
-            .filter(MT5Account.user_id == user.id, MT5Account.login == req.mt5Login)
-            .first()
-        )
-        if acc:
-            suffix = (acc.symbol_suffix or "").strip()
-    if not suffix:
-        binding = db.query(EABinding).filter(EABinding.user_id == user.id).first()
-        suffix = (binding.symbol_suffix or "").strip() if binding else ""
-    delivered = await manager.send_to_ea(
-        user.id,
-        {
-            "type": "ORDER_CMD",
-            "clientOrderId": order.client_order_id,
-            "login": order.mt5_login,
-            "symbol": order.symbol + suffix,
-            "side": order.side,
-            "volume": order.volume,
-            "entry": entry,
-            "stopLoss": stop_loss,
-            "takeProfit": take_profit,
-        },
-    )
-    # WS 已送达则标记 delivered；否则保持 PENDING 等待轮询版 EA 拉取。
-    # If delivered via WS, mark delivered; otherwise keep PENDING for polling EA to fetch.
-    if delivered:
-        order.delivered = True
-        order.delivered_at = datetime.now(timezone.utc)
-        db.commit()
-        db.refresh(order)
-
     return _serialize(order)
 
 
@@ -162,7 +168,19 @@ def list_orders(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """查询当前用户订单 / list current user's orders."""
+    """查询当前用户订单（先作废超时的 PENDING）。
+    List current user's orders (voiding stale PENDING ones first)."""
+    stale = [
+        o
+        for o in db.query(Order)
+        .filter(Order.user_id == user.id, Order.status == "PENDING")
+        .all()
+        if is_stale_pending(o)
+    ]
+    if stale:
+        for o in stale:
+            void_stale_order(o)
+        db.commit()
     rows = (
         db.query(Order)
         .filter(Order.user_id == user.id)
@@ -171,46 +189,6 @@ def list_orders(
         .all()
     )
     return {"orders": [_serialize(o) for o in rows]}
-
-
-async def _route_to_ea(user_id: str, order: Order, suffix: str, db: Session,
-                       entry: float = 0.0, stop_loss: float = 0.0, take_profit: float = 0.0) -> None:
-    """尝试通过 WS 即时下发指令给 EA；成功则标记 delivered，否则留待桥接轮询。
-    Try to push the command to the EA over WS; mark delivered on success,
-    otherwise leave PENDING for the bridge to poll.
-    """
-    delivered = await manager.send_to_ea(user_id, {
-        "type": "ORDER_CMD",
-        "clientOrderId": order.client_order_id,
-        "action": order.action,
-        "login": order.mt5_login,
-        "symbol": order.symbol + suffix,
-        "side": order.side,
-        "volume": order.volume,
-        "ticket": order.ticket or 0,
-        "entry": entry,
-        "stopLoss": stop_loss,
-        "takeProfit": take_profit,
-    })
-    if delivered:
-        order.delivered = True
-        order.delivered_at = datetime.now(timezone.utc)
-        db.commit()
-        db.refresh(order)
-
-
-def _suffix_for(user_id: str, mt5_login: str | None, db: Session) -> str:
-    """取目标账号的品种后缀 / resolve the symbol suffix for the target account."""
-    if mt5_login:
-        acc = (
-            db.query(MT5Account)
-            .filter(MT5Account.user_id == user_id, MT5Account.login == mt5_login)
-            .first()
-        )
-        if acc and (acc.symbol_suffix or "").strip():
-            return (acc.symbol_suffix or "").strip()
-    binding = db.query(EABinding).filter(EABinding.user_id == user_id).first()
-    return (binding.symbol_suffix or "").strip() if binding else ""
 
 
 def _assert_account_owned(db: Session, user_id: str, mt5_login: str | None) -> None:
@@ -234,8 +212,8 @@ async def close_position(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """平仓（含部分平仓）：以 CLOSE 指令落库并下发。
-    Close a position (incl. partial): persist a CLOSE command and dispatch it.
+    """平仓（含部分平仓）：以 CLOSE 指令落库，等待桥接拉取。
+    Close a position (incl. partial): persist a CLOSE command for the bridge.
     """
     # 校验目标账号归属，防止越权操控他人/不存在账号 / verify account ownership
     _assert_account_owned(db, user.id, req.mt5Login)
@@ -263,9 +241,6 @@ async def close_position(
     db.add(order)
     db.commit()
     db.refresh(order)
-
-    suffix = _suffix_for(user.id, req.mt5Login, db)
-    await _route_to_ea(user.id, order, suffix, db)
     return _serialize(order)
 
 
@@ -275,8 +250,8 @@ async def modify_position(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """修改持仓止损止盈：以 MODIFY 指令落库并下发。
-    Modify a position's SL/TP: persist a MODIFY command and dispatch it.
+    """修改持仓止损止盈：以 MODIFY 指令落库，等待桥接拉取。
+    Modify a position's SL/TP: persist a MODIFY command for the bridge.
     """
     # 校验目标账号归属，防止越权操控他人/不存在账号 / verify account ownership
     _assert_account_owned(db, user.id, req.mt5Login)
@@ -305,8 +280,38 @@ async def modify_position(
     db.add(order)
     db.commit()
     db.refresh(order)
-
-    suffix = _suffix_for(user.id, req.mt5Login, db)
-    await _route_to_ea(user.id, order, suffix, db,
-                       stop_loss=req.stopLoss, take_profit=req.takeProfit)
     return _serialize(order)
+
+
+# ---------- 超时订单后台清理 / stale-order background sweep ----------
+async def stale_order_monitor_loop() -> None:
+    """周期性把超时未执行的 PENDING 订单置为 FAILED 并推送前端。
+
+    覆盖用户下单后既不刷新订单页、桥接也一直不上线的场景：
+    没有任何请求触发作废时，由本任务兜底，让前端及时看到"已取消"。
+
+    Periodically void stale PENDING orders and push ORDER_UPDATE, covering the
+    case where neither the orders page nor the bridge ever touches them.
+    """
+    from app.core.database import SessionLocal
+
+    while True:
+        await asyncio.sleep(10)
+        try:
+            db = SessionLocal()
+            try:
+                voided: list[Order] = []
+                pending = db.query(Order).filter(Order.status == "PENDING").all()
+                for o in pending:
+                    if is_stale_pending(o):
+                        void_stale_order(o)
+                        voided.append(o)
+                if voided:
+                    db.commit()
+                for o in voided:
+                    db.refresh(o)
+                    await manager.push_to_client(o.user_id, order_update_payload(o))
+            finally:
+                db.close()
+        except Exception:
+            logger.exception("stale_order_monitor_loop error")

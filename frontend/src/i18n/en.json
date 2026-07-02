@@ -215,6 +215,7 @@
     "filled": "Filled @ {{price}}",
     "rejected": "Order rejected: {{msg}}",
     "ackTimeout": "No receipt yet, check the Orders page for the latest status",
+    "timeoutNote": "If the command is not executed within 5 minutes (e.g. the Bridge is offline), it is cancelled automatically and will never fill later at a stale price. This platform provides signal tooling only, not investment advice. Trade at your own risk.",
     "eaOffline": "No MT5 connection online, cannot place order",
     "noBridge": "No MT5 connected yet. Open the PRISMX Bridge app, paste your token and start it, then place the order.",
     "allOffline": "All connected MT5 accounts are currently offline. Make sure the PRISMX Bridge app is running and MT5 is logged in, then retry."
@@ -232,8 +233,8 @@
     "changePassword": "Change password",
     "setPassword": "Set password",
     "oldPassword": "Old password",
-    "newPassword": "New password (min 6 chars)",
-    "pwTooShort": "New password must be at least 6 characters",
+    "newPassword": "New password (min 8 chars)",
+    "pwTooShort": "New password must be at least 8 characters",
     "pwChanged": "Password updated",
     "pwError": "Failed to update password",
     "notifications": "Notifications",
@@ -322,6 +323,7 @@
     "suffixPlaceholder": "e.g. .sc or .s (leave empty if none)",
     "saveSuffix": "Save Suffix",
     "saved": "Saved",
+    "suffixNeedAccount": "The suffix is saved per account. Run the Bridge app so an account is reported first.",
     "steps": {
       "title": "Setup Steps",
       "s1": "Copy the API Token above",

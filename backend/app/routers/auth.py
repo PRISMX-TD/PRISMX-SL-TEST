@@ -12,7 +12,7 @@ from app.core.security import (
     verify_google_id_token,
     verify_password,
 )
-from app.models import EABinding, User
+from app.models import User
 from app.schemas import AuthRequest, AuthResponse, GoogleAuthRequest, UserOut
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -33,9 +33,6 @@ def register(request: Request, req: AuthRequest, db: Session = Depends(get_db)):
         api_token=generate_api_token(),
     )
     db.add(user)
-    db.flush()
-    # 同时创建一条空的 EA 绑定记录 / create an empty EA binding row
-    db.add(EABinding(user_id=user.id))
     db.commit()
     db.refresh(user)
 
@@ -59,16 +56,14 @@ def google_login(request: Request, req: GoogleAuthRequest, db: Session = Depends
     email = info["email"].lower()
     user = db.query(User).filter(User.email == email).first()
     if user is None:
-        # 首次用 Google 登录：创建无密码用户并建空 EA 绑定。
-        # First-time Google login: create a password-less user and an empty EA binding.
+        # 首次用 Google 登录：创建无密码用户。
+        # First-time Google login: create a password-less user.
         user = User(
             email=email,
             password_hash=None,
             api_token=generate_api_token(),
         )
         db.add(user)
-        db.flush()
-        db.add(EABinding(user_id=user.id))
         db.commit()
         db.refresh(user)
 

@@ -1,8 +1,16 @@
 """Web Push 推送派发 / Web Push dispatching.
-当信号引擎或 webhook 产生新信号时调用 dispatch_push 遍历匹配用户并推送。"""
+当信号引擎或 webhook 产生新信号时调用 dispatch_push 遍历匹配用户并推送。
+
+注意：dispatch_push 内部有阻塞网络 IO（逐个订阅调用推送服务），
+必须放在线程池里执行（见 dispatch_push_async），不能直接在事件循环中调用。
+Note: dispatch_push does blocking network IO (one HTTP call per subscription),
+so it must run in a thread pool (see dispatch_push_async), never directly on
+the event loop.
+"""
 import json
 import logging
 
+from starlette.concurrency import run_in_threadpool
 from pywebpush import WebPushException, webpush
 
 from app.core.config import settings
@@ -13,45 +21,57 @@ from app.utils.indicator import indicator_category
 logger = logging.getLogger("push")
 
 
+async def dispatch_push_async(signal: Signal) -> None:
+    """在线程池中执行推送派发，避免阻塞事件循环。
+    Run push dispatching in a thread pool to keep the event loop responsive."""
+    try:
+        await run_in_threadpool(dispatch_push, signal)
+    except Exception:
+        logger.exception("dispatch_push_async error")
+
+
+def _matched_user_ids(db, cat: str) -> set[str]:
+    """解析每个用户的白名单 JSON 并做精确匹配（不用 SQL LIKE，避免类别名互为
+    子串时误匹配）。/ Parse each user's whitelist JSON and match exactly —
+    SQL LIKE would false-match categories that are substrings of one another."""
+    user_ids: set[str] = set()
+    prefs = db.query(NotificationPref).filter(NotificationPref.enabled == True).all()  # noqa: E712
+    for p in prefs:
+        try:
+            cats = json.loads(p.selected_categories or "[]")
+        except (ValueError, TypeError):
+            continue
+        if isinstance(cats, list) and cat in cats:
+            user_ids.add(p.user_id)
+    return user_ids
+
+
 def dispatch_push(signal: Signal) -> None:
     """对一条新生成的信号，找出匹配的通知偏好用户并推送到其所有设备。
     Match a newly generated signal against users' notification prefs, then
     push to every subscribed device."""
     cat = indicator_category(signal.indicator)
-    logger.warning(f"[push] dispatch start: indicator={signal.indicator!r} -> cat={cat!r}")
     if not cat:
-        logger.warning("[push] empty category, skip")
+        logger.debug("[push] empty category, skip (indicator=%r)", signal.indicator)
         return
     vapid_claims = {"sub": settings.VAPID_SUBJECT}
     pem = settings.vapid_private_key
     if not pem or not settings.VAPID_PUBLIC_KEY:
-        logger.warning("[push] VAPID keys not configured, skipping push dispatch")
+        logger.debug("[push] VAPID keys not configured, skipping push dispatch")
         return
 
     db = SessionLocal()
     try:
-        # 取所有启用通知且此指标类别在白名单中的用户 / all users with matching prefs
-        prefs = db.query(NotificationPref).filter(
-            NotificationPref.enabled == True,
-            NotificationPref.selected_categories.like(f"%{cat}%"),
-        ).all()
-        logger.warning(f"[push] matched prefs: {len(prefs)} (enabled & whitelist contains {cat!r})")
-        if not prefs:
-            # 额外打印当前所有启用的偏好，便于排查白名单不匹配 / dump enabled prefs for debugging
-            enabled = db.query(NotificationPref).filter(NotificationPref.enabled == True).all()
-            logger.warning(
-                "[push] no match; enabled prefs whitelists: "
-                + "; ".join(p.selected_categories or "[]" for p in enabled)
-            )
+        user_ids = _matched_user_ids(db, cat)
+        logger.debug("[push] category %r matched %d user(s)", cat, len(user_ids))
+        if not user_ids:
             return
 
-        user_ids = set(p.user_id for p in prefs)
         subs = (
             db.query(PushSubscription)
             .filter(PushSubscription.user_id.in_(user_ids))
             .all()
         )
-        logger.warning(f"[push] subscriptions for matched users: {len(subs)}")
 
         payload = json.dumps({
             "title": f"新信号 {signal.symbol}",
@@ -85,11 +105,11 @@ def dispatch_push(signal: Signal) -> None:
             except WebPushException as e:
                 # 过期或无效订阅，标记清理 / mark stale subscriptions for cleanup
                 status = e.response.status_code if e.response is not None else "?"
-                logger.warning(f"[push] webpush failed sub={sub.id} status={status}: {e}")
+                logger.warning("[push] webpush failed sub=%s status=%s: %s", sub.id, status, e)
                 if e.response is not None and e.response.status_code in (410, 404):
                     failed_ids.append(sub.id)
                 continue
-        logger.warning(f"[push] sent ok: {sent}, failed: {len(failed_ids)}")
+        logger.info("[push] signal %s (%s): sent=%d failed=%d", signal.symbol, cat, sent, len(failed_ids))
 
         # 清理失败/过期的订阅 / remove stale subscriptions
         if failed_ids:

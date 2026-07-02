@@ -12,13 +12,15 @@ from app.core.config import settings
 from app.core.database import init_db
 from app.core.rate_limit import limiter
 from app.engine.signal_engine import signal_loop
-from app.routers import account, auth, bridge, ea, ea_poll, notifications, orders, signals, trends, webhook, ws
+from app.routers import account, auth, bridge, ea, notifications, orders, signals, trends, webhook, ws
 from app.routers.bridge import offline_monitor_loop
+from app.routers.orders import stale_order_monitor_loop
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # 启动：建表 + 启动信号引擎 + 离线检测 / startup: tables + engine + offline monitor
+    # 启动：建表 + 信号引擎 + 离线检测 + 超时订单清理
+    # startup: tables + signal engine + offline monitor + stale-order sweep
     init_db()
     task = (
         asyncio.create_task(signal_loop())
@@ -26,11 +28,13 @@ async def lifespan(app: FastAPI):
         else None
     )
     monitor = asyncio.create_task(offline_monitor_loop())
+    stale_sweep = asyncio.create_task(stale_order_monitor_loop())
     yield
     # 关闭：停止后台任务 / shutdown: stop background tasks
     if task is not None:
         task.cancel()
     monitor.cancel()
+    stale_sweep.cancel()
 
 
 app = FastAPI(title=settings.APP_NAME, lifespan=lifespan)
@@ -55,7 +59,6 @@ app.include_router(signals.router, prefix=settings.API_PREFIX)
 app.include_router(trends.router, prefix=settings.API_PREFIX)
 app.include_router(orders.router, prefix=settings.API_PREFIX)
 app.include_router(ea.router, prefix=settings.API_PREFIX)
-app.include_router(ea_poll.router, prefix=settings.API_PREFIX)
 app.include_router(bridge.router, prefix=settings.API_PREFIX)
 app.include_router(webhook.router, prefix=settings.API_PREFIX)
 app.include_router(account.router, prefix=settings.API_PREFIX)

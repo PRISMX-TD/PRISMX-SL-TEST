@@ -59,7 +59,7 @@ export default function AccountPage() {
   }
 
   async function handlePassword() {
-    if (!newPw || newPw.length < 6) {
+    if (!newPw || newPw.length < 8) {
       setPwMsg({ kind: "err", text: t("account.pwTooShort") })
       return
     }
