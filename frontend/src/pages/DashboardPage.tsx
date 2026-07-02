@@ -94,25 +94,35 @@ export default function DashboardPage() {
         <div className="dash-grid">
           {cur ? (
             <>
-              <SignalHero symbol={cur.symbol} cnName={nameOf(cur.symbol)} focusIdx={idx} focusTotal={focusEntries.length} stance={stance} trend={trends[cur.symbol]} myfxSentiment={myfxSentiment[cur.symbol] ?? null} onPrev={goPrev} onNext={goNext} onSelectIdx={setFocusIdx} />
-              {cur.signal ? <SignalExec signal={cur.signal} now={now} onTrade={(s) => setActiveSignal(s)} /> : (
-                <section className="card glass dash-exec p-4 flex items-center justify-center text-sm text-slate-500"><span className="h-1.5 w-1.5 rounded-full bg-slate-500 animate-breathe mr-2" />{t('signals.focus.noExecutable')}</section>
-              )}
+              <div className="dash-col-1">
+                <SignalHero symbol={cur.symbol} cnName={nameOf(cur.symbol)} focusIdx={idx} focusTotal={focusEntries.length} stance={stance} trend={trends[cur.symbol]} myfxSentiment={myfxSentiment[cur.symbol] ?? null} onPrev={goPrev} onNext={goNext} onSelectIdx={setFocusIdx} />
+                <QuotesTable quotes={quotes} mt5Online={anyOnline} focusSymbol={cur?.symbol} />
+              </div>
+              <div className="dash-col-2">
+                {cur.signal ? <SignalExec signal={cur.signal} now={now} onTrade={(s) => setActiveSignal(s)} /> : (
+                  <section className="card glass dash-exec p-4 flex items-center justify-center text-sm text-slate-500"><span className="h-1.5 w-1.5 rounded-full bg-slate-500 animate-breathe mr-2" />{t('signals.focus.noExecutable')}</section>
+                )}
+                <MarketOverview signals={signals} trends={trends} />
+              </div>
               <SignalOthers entries={otherEntries} now={now} onTrade={(s) => setActiveSignal(s)} onFocus={(i) => setFocusIdx(i)} onViewAll={() => navigate('/app')} />
             </>
           ) : (
             <>
-              <section className="card glass dash-hero p-8 flex flex-col items-center justify-center text-center gap-3">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" className="opacity-50"><path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z" /></svg>
-                <h2 className="text-lg font-bold text-white">{t('signals.title')}</h2>
-                <p className="text-sm text-slate-400 max-w-xs">{t('signals.waitingForSignals', '等待信号引擎或 TradingView 推送信号……')}</p>
-              </section>
-              <section className="card glass dash-exec p-4 flex items-center justify-center text-sm text-slate-500"><span className="h-1.5 w-1.5 rounded-full bg-slate-500 animate-breathe mr-2" />{t('signals.focus.noExecutable')}</section>
+              <div className="dash-col-1">
+                <section className="card glass dash-hero p-8 flex flex-col items-center justify-center text-center gap-3">
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" className="opacity-50"><path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z" /></svg>
+                  <h2 className="text-lg font-bold text-white">{t('signals.title')}</h2>
+                  <p className="text-sm text-slate-400 max-w-xs">{t('signals.waitingForSignals', '等待信号引擎或 TradingView 推送信号……')}</p>
+                </section>
+                <QuotesTable quotes={quotes} mt5Online={anyOnline} focusSymbol={cur?.symbol} />
+              </div>
+              <div className="dash-col-2">
+                <section className="card glass dash-exec p-4 flex items-center justify-center text-sm text-slate-500"><span className="h-1.5 w-1.5 rounded-full bg-slate-500 animate-breathe mr-2" />{t('signals.focus.noExecutable')}</section>
+                <MarketOverview signals={signals} trends={trends} />
+              </div>
               <section className="card glass dash-others p-4 flex items-center justify-center text-sm text-slate-500">{t('signals.focus.noExecutable')}</section>
             </>
           )}
-          <QuotesTable quotes={quotes} mt5Online={anyOnline} focusSymbol={cur?.symbol} />
-          <MarketOverview signals={signals} trends={trends} />
         </div>
       )}
       {activeSignal && <SlideOrderModal signal={activeSignal} accounts={accounts} quote={quotes[activeSignal.symbol]} onCancel={() => setActiveSignal(null)} onConfirm={handleConfirm} />}

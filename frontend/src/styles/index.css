@@ -874,16 +874,25 @@
     font-family: "JetBrains Mono", monospace;
   }
 
-  /* ── 仪表盘网格 / dashboard grid ── */
+  /* ── 仪表盘网格 / dashboard grid ──
+     改用列内 flex 纵向堆叠，避免 grid 跨列共享行高（stretch）
+     导致 dash-exec 卡片内容多少反过来撑大/压缩 dash-hero 结构。
+     use per-column flex stacks instead of a shared grid row, so that
+     dash-exec's variable content height no longer stretches dash-hero. */
   .dash-grid {
     display: grid;
     grid-template-columns: 1.62fr 1fr 0.94fr;
-    grid-template-rows: auto auto;
+    align-items: start;
     gap: 16px;
   }
+  .dash-col-1,
+  .dash-col-2 {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-width: 0;
+  }
   .dash-hero {
-    grid-column: 1;
-    grid-row: 1;
     /* 视觉上全隐形 / visually invisible */
     background: transparent !important;
     border: none !important;
@@ -895,33 +904,9 @@
   .dash-hero::before {
     display: none;
   }
-  .dash-exec {
-    grid-column: 2;
-    grid-row: 1;
-  }
-  .dash-others {
-    grid-column: 3;
-    grid-row: 1 / 3;
-  }
-  .dash-quotes {
-    grid-column: 1;
-    grid-row: 2;
-  }
-  .dash-overview {
-    grid-column: 2;
-    grid-row: 2;
-  }
   @media (max-width: 1240px) {
     .dash-grid {
       grid-template-columns: 1fr 1fr;
-    }
-    .dash-hero,
-    .dash-exec,
-    .dash-others,
-    .dash-quotes,
-    .dash-overview {
-      grid-column: auto;
-      grid-row: auto;
     }
   }
 
@@ -1199,11 +1184,9 @@
       grid-template-columns: 1fr;
       gap: 12px;
     }
-    .dash-hero,
-    .dash-exec,
-    .dash-others,
-    .dash-quotes,
-    .dash-overview {
+    .dash-col-1,
+    .dash-col-2,
+    .dash-others {
       grid-column: 1 !important;
       grid-row: auto !important;
     }
