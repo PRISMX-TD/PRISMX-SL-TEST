@@ -3,7 +3,7 @@
 import { type FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Signal } from '../../api/types'
-import { calcRiskReward, calcCountdown } from '../../api/utils'
+import { calcRiskReward, calcCountdown, fmtTime } from '../../api/utils'
 import { SIGNAL_LIFESPAN_MS, rrTone } from './signalView'
 
 interface Props {
@@ -109,9 +109,14 @@ const SignalExec: FC<Props> = ({ signal, now, onTrade }) => {
         </div>
 
         <div className="flex items-start justify-between">
-          <div className="flex items-center gap-2">
-            <b className="text-lg font-bold text-white">{symName || signal.symbol}</b>
-            <span className={`chip ${isBuy ? 'chip-buy' : 'chip-sell'}`}>{sideTag}</span>
+          <div>
+            <div className="flex items-center gap-2">
+              <b className="text-lg font-bold text-white">{symName || signal.symbol}</b>
+              <span className={`chip ${isBuy ? 'chip-buy' : 'chip-sell'}`}>{sideTag}</span>
+            </div>
+            {symName && (
+              <div className="text-[11px] text-slate-400 mt-0.5">{indicatorLabel}</div>
+            )}
           </div>
           <div className="text-right">
             <div className={`text-xl font-bold ${rrTone(rr?.rr ?? null)}`}>
@@ -149,6 +154,7 @@ const SignalExec: FC<Props> = ({ signal, now, onTrade }) => {
         <div className="flex items-center justify-between mt-3">
           <div className="min-w-0 flex-1">
             <div className="text-sm text-slate-300 truncate">{indicatorLabel}</div>
+            <div className="text-[10px] text-slate-600 mt-0.5">{fmtTime(signal.createdAt)}</div>
           </div>
           <button onClick={() => onTrade(signal)} className="btn btn-primary rounded-xl px-6 py-2 text-[13px] font-semibold shrink-0 ml-3">
             {t('signals.trade')}
