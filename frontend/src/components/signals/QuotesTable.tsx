@@ -25,13 +25,15 @@ const QuotesTable: FC<Props> = ({ quotes, mt5Online }) => {
 
   return (
     <section className="card glass dash-quotes">
-      <div className="card-head">
-        <h3>{t('signals.focus.quotesHeading', '实时行情报价')}</h3>
-        <span className={`chip ${mt5Online ? 'chip-live' : 'chip-dim'}`}>
+      {/* 标题栏：左「实时行情报价」右 MT5 状态 / header: title left, MT5 status right */}
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-[15px] font-bold text-white">{t('signals.focus.quotesHeading', '实时行情报价')}</h3>
+        <div className="flex items-center gap-2 text-xs">
           <span className={`inline-block w-[7px] h-[7px] rounded-full ${mt5Online ? 'bg-up shadow-[0_0_10px_rgba(46,224,126,0.9)] animate-breathe' : 'bg-slate-500'}`} />
-          {mt5Online ? t('signals.focus.live', '实时') : t('signals.focus.offline', '离线')}
-        </span>
-        <span className="aux">{t('signals.focus.quotesHint', '由你的 MT5 上报')}</span>
+          <span className={`font-semibold ${mt5Online ? 'text-up' : 'text-slate-500'}`}>
+            {mt5Online ? t('signals.focus.live', 'MT5 在线') : t('signals.focus.offline', 'MT5 离线')}
+          </span>
+        </div>
       </div>
       <div className="qt-table-wrap">
         <table className="qt-table">
