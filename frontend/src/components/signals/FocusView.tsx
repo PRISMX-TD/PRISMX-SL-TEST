@@ -24,7 +24,6 @@ import {
 export default function FocusView({
   entries,
   now,
-  newIds,
   onTrade,
   quotes,
   trends,
@@ -32,7 +31,6 @@ export default function FocusView({
 }: {
   entries: FocusEntry[]
   now: number
-  newIds: Set<string>
   onTrade: (s: Signal) => void
   quotes: Record<string, Quote>
   trends: Record<string, Trend>
@@ -377,7 +375,6 @@ export default function FocusView({
               const oTone = FOCUS_TONE[e.state]
               const sig = e.signal!
               const oRr = calcRiskReward(sig.symbol, sig.entry, sig.stopLoss, sig.takeProfit)
-              const isNew = newIds.has(sig.id)
               const cd = calcCountdown(sig.expireAt, SIGNAL_LIFESPAN_MS, now)
               const sideTag = sig.side === 'BUY' ? t('common.buy') : t('common.sell')
               return (

@@ -9,15 +9,13 @@ import { clientOrderId } from '../api/utils'
 import type { Signal } from '../api/types'
 import SignalGrid from '../components/signals/SignalGrid'
 import SlideOrderModal from '../components/SlideOrderModal'
-import { useNewSignalIds, useNow } from '../components/signals/hooks'
+import { useNow } from '../components/signals/hooks'
 
 export default function SignalsPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { signals, accounts, loaded, refreshAll, quotes } = useLive()
   const now = useNow(1000)
-  const newIds = useNewSignalIds(signals)
-
   const [activeSignal, setActiveSignal] = useState<Signal | null>(null)
   const [toast, setToast] = useState<{ msg: string; kind: 'success' | 'error' | 'info' } | null>(null)
   const toastTimer = useRef<number | undefined>(undefined)
@@ -72,7 +70,7 @@ export default function SignalsPage() {
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
             {t('signals.focus.backToDashboard', '返回仪表盘')}
           </button>
-          <SignalGrid signals={signals} newIds={newIds} now={now} onTrade={(s) => setActiveSignal(s)} />
+          <SignalGrid signals={signals} now={now} onTrade={(s) => setActiveSignal(s)} />
         </div>
       )}
       {activeSignal && <SlideOrderModal signal={activeSignal} accounts={accounts} quote={quotes[activeSignal.symbol]} onCancel={() => setActiveSignal(null)} onConfirm={handleConfirm} />}

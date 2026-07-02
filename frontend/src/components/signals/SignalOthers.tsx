@@ -15,14 +15,13 @@ interface OtherEntry {
 
 interface Props {
   entries: OtherEntry[]
-  newIds: Set<string>
   now: number
   onTrade: (s: Signal) => void
   onFocus: (idx: number) => void
   onViewAll: () => void
 }
 
-const SignalOthers: FC<Props> = ({ entries, newIds, now, onTrade, onFocus, onViewAll }) => {
+const SignalOthers: FC<Props> = ({ entries, now, onTrade, onFocus, onViewAll }) => {
   const { t } = useTranslation()
 
   // Dynamism: show up to 3 items, with animation
@@ -45,7 +44,6 @@ const SignalOthers: FC<Props> = ({ entries, newIds, now, onTrade, onFocus, onVie
         )}
         {visible.map(({ symbol, signal: sig, idx }) => {
           const oRr = calcRiskReward(sig.symbol, sig.entry, sig.stopLoss, sig.takeProfit)
-          const isNew = newIds.has(sig.id)
           const cd = calcCountdown(sig.expireAt, SIGNAL_LIFESPAN_MS, now)
           const isBuy = sig.side === 'BUY'
           const sideTag = isBuy ? t('common.buy') : t('common.sell')

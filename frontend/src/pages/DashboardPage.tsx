@@ -14,7 +14,7 @@ import SignalOthers from '../components/signals/SignalOthers'
 import QuotesTable from '../components/signals/QuotesTable'
 import MarketOverview from '../components/signals/MarketOverview'
 import SlideOrderModal from '../components/SlideOrderModal'
-import { useFocusEntries, useNewSignalIds, useNow } from '../components/signals/hooks'
+import { useFocusEntries, useNow } from '../components/signals/hooks'
 import { trendStance, type TrendStance } from '../components/signals/signalView'
 import type { FocusState } from '../components/signals/signalView'
 
@@ -23,7 +23,6 @@ export default function DashboardPage() {
   const navigate = useNavigate()
   const { signals, anyOnline, accounts, loaded, refreshAll, quotes, trends } = useLive()
   const now = useNow(1000)
-  const newIds = useNewSignalIds(signals)
   const { sentiment: myfxSentiment } = useMyfxbookSentiment()
   const focusEntries = useFocusEntries(signals, now)
 
@@ -99,7 +98,7 @@ export default function DashboardPage() {
               {cur.signal ? <SignalExec signal={cur.signal} now={now} onTrade={(s) => setActiveSignal(s)} /> : (
                 <section className="card glass dash-exec p-4 flex items-center justify-center text-sm text-slate-500"><span className="h-1.5 w-1.5 rounded-full bg-slate-500 animate-breathe mr-2" />{t('signals.focus.noExecutable')}</section>
               )}
-              <SignalOthers entries={otherEntries} newIds={newIds} now={now} onTrade={(s) => setActiveSignal(s)} onFocus={(i) => setFocusIdx(i)} onViewAll={() => navigate('/app')} />
+              <SignalOthers entries={otherEntries} now={now} onTrade={(s) => setActiveSignal(s)} onFocus={(i) => setFocusIdx(i)} onViewAll={() => navigate('/app')} />
             </>
           ) : (
             <>

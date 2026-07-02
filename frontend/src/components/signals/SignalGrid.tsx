@@ -9,12 +9,11 @@ import { SIGNAL_LIFESPAN_MS, effectiveStatus, rrTone } from './signalView'
 
 interface Props {
   signals: Signal[]
-  newIds: Set<string>
   now: number
   onTrade: (s: Signal) => void
 }
 
-const SignalGrid: FC<Props> = ({ signals, newIds, now, onTrade }) => {
+const SignalGrid: FC<Props> = ({ signals, now, onTrade }) => {
   const { t } = useTranslation()
   const { getPref, setPref } = usePrefs()
 
@@ -96,7 +95,6 @@ const SignalGrid: FC<Props> = ({ signals, newIds, now, onTrade }) => {
         )}
         {filtered.map((sig) => {
           const oRr = calcRiskReward(sig.symbol, sig.entry, sig.stopLoss, sig.takeProfit)
-          const isNew = newIds.has(sig.id)
           const cd = calcCountdown(sig.expireAt, SIGNAL_LIFESPAN_MS, now)
           const isBuy = sig.side === 'BUY'
 
