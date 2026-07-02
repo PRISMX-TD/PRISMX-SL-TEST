@@ -40,6 +40,8 @@ export default function SlideOrderModal({ signal, accounts, quote, onCancel, onC
 
   const trackRef = useRef<HTMLDivElement>(null)
   const sliding = useRef(false)
+  const onCancelRef = useRef(onCancel)
+  onCancelRef.current = onCancel
 
   useEffect(() => {
     if (!login && onlineAccounts[0]) setLogin(onlineAccounts[0].login)
@@ -49,26 +51,13 @@ export default function SlideOrderModal({ signal, accounts, quote, onCancel, onC
     setVolume(suggestVolume(selected?.equity))
   }, [selected?.login])
 
-  // Escape key
+  // Escape key（用 ref 避免依赖漂移 / use ref to avoid dependency drift）
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && !submitting) onCancel() }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && !submitting) onCancelRef.current() }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [onCancel, submitting])
-
-  // PWA back gesture
-  useEffect(() => {
-    window.history.pushState({ __modal: true }, '', window.location.href)
-    const onPop = () => {
-      window.history.pushState({ __modal: true }, '', window.location.href)
-      if (!submitting) onCancel()
-    }
-    window.addEventListener('popstate', onPop)
-    return () => {
-      window.removeEventListener('popstate', onPop)
-      window.history.back()
-    }
-  }, [onCancel, submitting])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [submitting])
 
   const getPct = (clientX: number) => {
     const el = trackRef.current

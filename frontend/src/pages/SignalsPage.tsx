@@ -148,44 +148,66 @@ export default function SignalsPage() {
       ) : (
         <>
           {/* ═══ 仪表盘视图 / Dashboard View ═══ */}
-          {view === 'dashboard' && cur && (
+          {view === 'dashboard' && (
             <div className="dash-grid">
-              <SignalHero
-                symbol={cur.symbol}
-                cnName={nameOf(cur.symbol)}
-                entriesCount={focusEntries.length}
-                focusIdx={idx}
-                focusTotal={focusEntries.length}
-                stance={stance}
-                trend={trends[cur.symbol]}
-                sentiment={sentiment}
-                onPrev={goPrev}
-                onNext={goNext}
-                onSelectIdx={setFocusIdx}
-              />
+              {cur ? (
+                <>
+                  <SignalHero
+                    symbol={cur.symbol}
+                    cnName={nameOf(cur.symbol)}
+                    entriesCount={focusEntries.length}
+                    focusIdx={idx}
+                    focusTotal={focusEntries.length}
+                    stance={stance}
+                    trend={trends[cur.symbol]}
+                    sentiment={sentiment}
+                    onPrev={goPrev}
+                    onNext={goNext}
+                    onSelectIdx={setFocusIdx}
+                  />
 
-              {/* Exec card: only show when current symbol has an active signal */}
-              {cur.signal ? (
-                <SignalExec
-                  signal={cur.signal}
-                  now={now}
-                  onTrade={(s) => setActiveSignal(s)}
-                />
+                  {/* Exec card: only show when current symbol has an active signal */}
+                  {cur.signal ? (
+                    <SignalExec
+                      signal={cur.signal}
+                      now={now}
+                      onTrade={(s) => setActiveSignal(s)}
+                    />
+                  ) : (
+                    <section className="card glass dash-exec p-4 flex items-center justify-center text-sm text-slate-500">
+                      <span className="h-1.5 w-1.5 rounded-full bg-slate-500 animate-breathe mr-2" />
+                      {t('signals.focus.noExecutable')}
+                    </section>
+                  )}
+
+                  <SignalOthers
+                    entries={otherEntries}
+                    newIds={newIds}
+                    now={now}
+                    onTrade={(s) => setActiveSignal(s)}
+                    onFocus={(i) => setFocusIdx(i)}
+                    onViewAll={() => setView('signals')}
+                  />
+                </>
               ) : (
-                <section className="card glass dash-exec p-4 flex items-center justify-center text-sm text-slate-500">
-                  <span className="h-1.5 w-1.5 rounded-full bg-slate-500 animate-breathe mr-2" />
-                  {t('signals.focus.noExecutable')}
-                </section>
+                <>
+                  {/* 空状态：暂无信号 / empty state */}
+                  <section className="card glass dash-hero p-8 flex flex-col items-center justify-center text-center gap-3">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" className="opacity-50">
+                      <path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z" />
+                    </svg>
+                    <h2 className="text-lg font-bold text-white">{t('signals.title')}</h2>
+                    <p className="text-sm text-slate-400 max-w-xs">{t('signals.waitingForSignals', '等待信号引擎或 TradingView 推送信号……')}</p>
+                  </section>
+                  <section className="card glass dash-exec p-4 flex items-center justify-center text-sm text-slate-500">
+                    <span className="h-1.5 w-1.5 rounded-full bg-slate-500 animate-breathe mr-2" />
+                    {t('signals.focus.noExecutable')}
+                  </section>
+                  <section className="card glass dash-others p-4 flex items-center justify-center text-sm text-slate-500">
+                    {t('signals.focus.noExecutable')}
+                  </section>
+                </>
               )}
-
-              <SignalOthers
-                entries={otherEntries}
-                newIds={newIds}
-                now={now}
-                onTrade={(s) => setActiveSignal(s)}
-                onFocus={(i) => setFocusIdx(i)}
-                onViewAll={() => setView('signals')}
-              />
 
               <QuotesTable
                 signals={signals}
