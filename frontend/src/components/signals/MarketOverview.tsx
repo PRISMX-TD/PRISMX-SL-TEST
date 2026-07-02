@@ -3,7 +3,7 @@
 import { type FC, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Signal, Trend } from '../../api/types'
-import { trendStance, type TrendStance } from './signalView'
+import { trendStance } from './signalView'
 
 interface Props {
   signals: Signal[]

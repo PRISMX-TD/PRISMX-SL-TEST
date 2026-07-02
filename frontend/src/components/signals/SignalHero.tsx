@@ -3,8 +3,7 @@
 import { type FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Trend, TrendDir } from '../../api/types'
-import MultiTfTrend from './MultiTfTrend'
-import { TREND_TFS, type TrendStance, trendStance, STANCE_TONE } from './signalView'
+import { TREND_TFS, type TrendStance } from './signalView'
 
 interface Sentiment {
   long: number
@@ -38,16 +37,11 @@ const SignalHero: FC<Props> = ({
   stance, trend, sentiment, onPrev, onNext, onSelectIdx,
 }) => {
   const { t } = useTranslation()
-  const tone = STANCE_TONE[stance]
   const stanceLabel = stance === 'BULL' ? t('signals.focus.bull') : stance === 'BEAR' ? t('signals.focus.bear') : t('signals.focus.neutral')
   const stanceNote = stance === 'BULL' ? t('signals.focus.adviceBull') : stance === 'BEAR' ? t('signals.focus.adviceBear') : t('signals.focus.adviceNeutral')
   const total = Math.max(1, sentiment.total)
   const longPct = Math.round((sentiment.long / total) * 100)
   const shortPct = Math.round((sentiment.short / total) * 100)
-
-  const BULL_DOT = '#2ee07e'
-  const BEAR_DOT = '#ff4d67'
-  const NEUTRAL_DOT = '#94a3b8'
 
   return (
     <section className="card glass hero-card dash-hero p-5">

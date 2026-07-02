@@ -70,8 +70,8 @@ const QuotesTable: FC<Props> = ({ signals, quotes, mt5Online, onTrade }) => {
               const q = quotes[sym]
               const sig = findSignal(sym)
               const price = q ? q.bid : null
-              const change = 0 // Not tracked in current data model
-              const changePct = change
+              const change = 0 // 暂未接入涨跌数据 / not yet available
+              const changePct: number = change
               const isUp = changePct >= 0
               const clr = symColor(sym)
               return (

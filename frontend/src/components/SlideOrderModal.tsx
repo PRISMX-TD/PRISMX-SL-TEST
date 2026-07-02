@@ -172,11 +172,11 @@ export default function SlideOrderModal({ signal, accounts, quote, onCancel, onC
           </div>
           <div className="slide-row">
             <span className="k">{t('signals.colSl')} / {t('signals.colTp')}</span>
-            <span className="v num">
-              <span style={{ color: 'var(--down)' }}>{sl || '-'}</span>
-              <i> / </i>
-              <span style={{ color: 'var(--up)' }}>{tp || '-'}</span>
-            </span>
+            <div className="flex items-center gap-2">
+              <input className="h-8 w-[90px] rounded-lg bg-white/5 border border-down/40 px-2 text-sm num text-down text-right" value={sl} onChange={(e) => setSl(e.target.value)} placeholder={signal.stopLoss != null ? String(signal.stopLoss) : 'SL'} />
+              <i className="text-slate-500">/</i>
+              <input className="h-8 w-[90px] rounded-lg bg-white/5 border border-up/40 px-2 text-sm num text-up text-right" value={tp} onChange={(e) => setTp(e.target.value)} placeholder={signal.takeProfit != null ? String(signal.takeProfit) : 'TP'} />
+            </div>
           </div>
           {/* Quick lots */}
           <div className="slide-row">

@@ -26,7 +26,6 @@ const SignalOthers: FC<Props> = ({ entries, newIds, now, onTrade, onFocus, onVie
   const { t } = useTranslation()
 
   // Dynamism: show up to 3 items, with animation
-  const visibleCount = Math.min(entries.length, 3)
   const visible = entries.slice(0, 3)
 
   return (
@@ -44,7 +43,7 @@ const SignalOthers: FC<Props> = ({ entries, newIds, now, onTrade, onFocus, onVie
             {t('signals.focus.noExecutable')}
           </div>
         )}
-        {visible.map(({ symbol, state, signal: sig, idx }) => {
+        {visible.map(({ symbol, signal: sig, idx }) => {
           const oRr = calcRiskReward(sig.symbol, sig.entry, sig.stopLoss, sig.takeProfit)
           const isNew = newIds.has(sig.id)
           const cd = calcCountdown(sig.expireAt, SIGNAL_LIFESPAN_MS, now)

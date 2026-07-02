@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { usePrefs } from '../../store/prefs'
 import type { Signal } from '../../api/types'
 import { calcRiskReward, calcCountdown, fmtTime } from '../../api/utils'
-import { SIGNAL_LIFESPAN_MS, effectiveStatus, type EffStatus, rrTone } from './signalView'
+import { SIGNAL_LIFESPAN_MS, effectiveStatus, rrTone } from './signalView'
 
 interface Props {
   signals: Signal[]
