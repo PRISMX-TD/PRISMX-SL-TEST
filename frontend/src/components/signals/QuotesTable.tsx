@@ -7,6 +7,7 @@ import type { Quote } from '../../api/types'
 interface Props {
   quotes: Record<string, Quote>
   mt5Online: boolean
+  focusSymbol?: string   // 手机端只显示这个品种 / mobile: show only this symbol
 }
 
 // 核心品种列表 / core symbols
@@ -20,12 +21,22 @@ const CORE_SYMBOLS: { sym: string; cnName: string; letter: string; color: string
   { sym: 'BTCUSD', cnName: '比特币', letter: 'B', color: '#f59e0b' },
 ]
 
-const QuotesTable: FC<Props> = ({ quotes, mt5Online }) => {
+const QuotesTable: FC<Props> = ({ quotes, mt5Online, focusSymbol }) => {
   const { t } = useTranslation()
+
+  // 手机端单行报价：优先用焦点品种，找不到则用第一个核心品种 / mobile: focus symbol or fallback
+  const focusMeta = CORE_SYMBOLS.find(s => s.sym === focusSymbol) ?? CORE_SYMBOLS[0]
+  const focusQ = quotes[focusMeta.sym]
+  const focusDigits = focusQ?.digits ?? 5
+  const focusBid = focusQ?.bid != null ? focusQ.bid.toFixed(focusDigits) : '-'
+  const focusAsk = focusQ?.ask != null ? focusQ.ask.toFixed(focusDigits) : '-'
+  const spread = (focusQ?.bid != null && focusQ?.ask != null)
+    ? ((focusQ.ask - focusQ.bid) * Math.pow(10, focusDigits)).toFixed(1)
+    : '-'
 
   return (
     <section className="card glass dash-quotes p-5">
-      {/* 标题栏：左「实时行情报价」右 MT5 状态 / header: title left, MT5 status right */}
+      {/* 标题栏：左「实时行情报价」右 MT5 状态 */}
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-[15px] font-bold text-white">{t('signals.focus.quotesHeading', '实时行情报价')}</h3>
         <div className="flex items-center gap-2 text-xs">
@@ -35,7 +46,33 @@ const QuotesTable: FC<Props> = ({ quotes, mt5Online }) => {
           </span>
         </div>
       </div>
-      <div className="qt-table-wrap">
+
+      {/* ── 手机端：单行焦点品种报价 / mobile: single focused symbol ── */}
+      <div className="qt-mobile-row sm:hidden">
+        <div className="flex items-center gap-2">
+          <span className="qt-sym-ava" style={{ background: focusMeta.color + '22', color: focusMeta.color, width: 28, height: 28, fontSize: 11 }}>
+            {focusMeta.letter}
+          </span>
+          <b className="text-sm font-bold text-white">{focusMeta.sym}</b>
+        </div>
+        <div className="flex items-center gap-3 ml-auto">
+          <div className="text-center">
+            <div className="text-[10px] text-slate-500 mb-0.5">{t('signals.quotes.bid', '买价')}</div>
+            <span className="num font-bold text-sm" style={{ color: '#2ee07e' }}>{focusAsk}</span>
+          </div>
+          <div className="text-center">
+            <div className="text-[10px] text-slate-500 mb-0.5">{t('signals.quotes.spread', '点差')}</div>
+            <span className="num text-xs text-slate-400">{spread}</span>
+          </div>
+          <div className="text-center">
+            <div className="text-[10px] text-slate-500 mb-0.5">{t('signals.quotes.ask', '卖价')}</div>
+            <span className="num font-bold text-sm" style={{ color: '#ff4d67' }}>{focusBid}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* ── 桌面端：完整报价表 / desktop: full table ── */}
+      <div className="qt-table-wrap hidden sm:block">
         <table className="qt-table">
           <thead>
             <tr>

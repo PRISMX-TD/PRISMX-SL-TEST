@@ -693,6 +693,25 @@
   }
 
   /* ── 行情表 / quotes table ── */
+  .qt-mobile-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 12px 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+  }
+  .qt-mobile-row:first-child {
+    border-top: none;
+  }
+  .qt-mobile-row .qt-sym-cell {
+    flex: 1;
+    min-width: 0;
+  }
+  .qt-mobile-row .qt-price {
+    text-align: right;
+    white-space: nowrap;
+  }
   .qt-table-wrap {
     overflow-x: auto;
   }
