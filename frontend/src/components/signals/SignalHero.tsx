@@ -126,10 +126,6 @@ const SignalHero: FC<Props> = ({
       <div className="mt-5 relative z-10">
         <div className="flex items-center justify-between text-xs mb-2">
           <span className="text-slate-400">{t('signals.focus.communitySentiment')}</span>
-          <div className="flex items-center gap-3">
-            <span className="text-up font-bold">{t('signals.focus.bull')} {myfxSentiment?.longPct ?? '-'}%</span>
-            <span className="text-down font-bold">{t('signals.focus.bear')} {myfxSentiment?.shortPct ?? '-'}%</span>
-          </div>
         </div>
         {myfxSentiment ? (
           <div className="senti-bar senti-bar--myfx">
@@ -142,6 +138,10 @@ const SignalHero: FC<Props> = ({
             <i className="b" style={{ width: '50%', background: '#334155' }} />
           </div>
         )}
+        <div className="flex items-center justify-between text-xs mt-2">
+          <span className="text-up font-bold">{t('signals.focus.bull')} {myfxSentiment?.longPct ?? '-'}%</span>
+          <span className="text-down font-bold">{t('signals.focus.bear')} {myfxSentiment?.shortPct ?? '-'}%</span>
+        </div>
       </div>
     </section>
   )
