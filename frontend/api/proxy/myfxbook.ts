@@ -3,7 +3,7 @@
 // 部署路径: /api/proxy/myfxbook
 
 export const config = {
-  runtime: 'nodejs22.x',
+  runtime: 'edge',
 }
 
 export default async function handler() {
