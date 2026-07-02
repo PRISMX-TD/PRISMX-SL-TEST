@@ -121,7 +121,7 @@ export default function DashboardPage() {
               <section className="card glass dash-others p-4 flex items-center justify-center text-sm text-slate-500">{t('signals.focus.noExecutable')}</section>
             </>
           )}
-          <QuotesTable signals={signals} quotes={quotes} mt5Online={anyOnline} onTrade={(s) => setActiveSignal(s)} />
+          <QuotesTable quotes={quotes} mt5Online={anyOnline} />
           <MarketOverview signals={signals} trends={trends} />
         </div>
       )}

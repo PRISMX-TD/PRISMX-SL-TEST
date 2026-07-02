@@ -1,44 +1,27 @@
-// 实时行情报价表（仪表盘左下）+ 品种列表来自 signals + quotes
-// Live quotes table (dashboard bottom-left), symbols from signals + real quotes
-import { type FC, useMemo } from 'react'
+// 实时行情报价表（仪表盘左下）：固定核心品种，买价 + 卖价
+// Live quotes table (dashboard bottom-left): hardcoded core symbols, bid + ask
+import { type FC } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { Quote, Signal } from '../../api/types'
+import type { Quote } from '../../api/types'
 
 interface Props {
-  signals: Signal[]
   quotes: Record<string, Quote>
   mt5Online: boolean
-  onTrade: (s: Signal) => void
 }
 
-// 品种的币种简称首字母 / first letter of the base currency
-function symbolLetter(sym: string): string {
-  return (sym[0] ?? '?').toUpperCase()
-}
+// 核心品种列表 / core symbols
+const CORE_SYMBOLS: { sym: string; cnName: string; letter: string; color: string }[] = [
+  { sym: 'XAUUSD', cnName: '黄金', letter: 'X', color: '#f6c453' },
+  { sym: 'XAGUSD', cnName: '白银', letter: 'X', color: '#94a3b8' },
+  { sym: 'EURUSD', cnName: '欧元/美元', letter: 'E', color: '#6366f1' },
+  { sym: 'GBPUSD', cnName: '英镑/美元', letter: 'G', color: '#a855f7' },
+  { sym: 'USDJPY', cnName: '美元/日元', letter: 'U', color: '#7c3aed' },
+  { sym: 'EURGBP', cnName: '欧元/英镑', letter: 'E', color: '#8b5cf6' },
+  { sym: 'BTCUSD', cnName: '比特币', letter: 'B', color: '#f59e0b' },
+]
 
-// 品种颜色（根据首字母哈希）/ deterministic color based on symbol
-function symColor(sym: string): string {
-  const colors = ['#7c3aed', '#a855f7', '#6366f1', '#8b5cf6', '#a78bfa']
-  let hash = 0
-  for (let i = 0; i < sym.length; i++) hash = sym.charCodeAt(i) + ((hash << 5) - hash)
-  return colors[Math.abs(hash) % colors.length]
-}
-
-const QuotesTable: FC<Props> = ({ signals, quotes, mt5Online, onTrade }) => {
+const QuotesTable: FC<Props> = ({ quotes, mt5Online }) => {
   const { t } = useTranslation()
-
-  // 从 signals 提取唯一品种列表 / unique symbols from active signals
-  const symbols = useMemo(() => {
-    const set = new Set<string>()
-    for (const s of signals) {
-      if (s.status === 'ACTIVE') set.add(s.symbol)
-    }
-    return Array.from(set).slice(0, 10)
-  }, [signals])
-
-  // 找当前品种的活跃信号 / find active signal for a symbol
-  const findSignal = (sym: string): Signal | undefined =>
-    signals.find(s => s.symbol === sym && s.status === 'ACTIVE')
 
   return (
     <section className="card glass dash-quotes">
@@ -55,57 +38,29 @@ const QuotesTable: FC<Props> = ({ signals, quotes, mt5Online, onTrade }) => {
           <thead>
             <tr>
               <th>{t('signals.focus.symbol', '交易品种')}</th>
-              <th>{t('signals.focus.price', '价格')}</th>
-              <th>{t('signals.focus.change', '涨跌幅')}</th>
-              <th>{t('signals.focus.high', '高点24H')}</th>
-              <th>{t('signals.focus.low', '低点24H')}</th>
-              <th>{t('signals.focus.action', '操作')}</th>
+              <th>{t('signals.focus.bid', '卖价')}</th>
+              <th>{t('signals.focus.ask', '买价')}</th>
             </tr>
           </thead>
           <tbody>
-            {symbols.length === 0 && (
-              <tr><td colSpan={6} className="text-center py-6 text-slate-500 text-sm">{t('signals.focus.noQuotes')}</td></tr>
-            )}
-            {symbols.map((sym) => {
+            {CORE_SYMBOLS.map(({ sym, cnName, letter, color }) => {
               const q = quotes[sym]
-              const sig = findSignal(sym)
-              const price = q ? q.bid : null
-              const change = 0 // 暂未接入涨跌数据 / not yet available
-              const changePct: number = change
-              const isUp = changePct >= 0
-              const clr = symColor(sym)
+              const digits = q?.digits ?? 5
+              const bid = q?.bid != null ? q.bid.toFixed(digits) : null
+              const ask = q?.ask != null ? q.ask.toFixed(digits) : null
               return (
                 <tr key={sym}>
                   <td>
                     <div className="qt-sym-cell">
-                      <div className="qt-sym-ava" style={{ background: clr + '22', color: clr }}>{symbolLetter(sym)}</div>
+                      <div className="qt-sym-ava" style={{ background: color + '22', color }}>{letter}</div>
                       <div className="nm">
                         <b>{sym}</b>
-                        <span>{t(`signals.symbolNames.${sym}`, { defaultValue: '' })}</span>
+                        <span>{cnName}</span>
                       </div>
                     </div>
                   </td>
-                  <td><span className="qt-price num">{price != null ? price.toFixed(q?.digits ?? 5) : '-'}</span></td>
-                  <td>
-                    {changePct !== 0 ? (
-                      <span className={`qt-chg-chip ${isUp ? 'up' : 'down'}`}>
-                        {isUp ? '+' : ''}{changePct.toFixed(2)}%
-                      </span>
-                    ) : (
-                      <span className="text-xs text-slate-500">0.00%</span>
-                    )}
-                  </td>
-                  <td><span className="text-sm text-slate-300 num">{q?.bid != null ? (q.bid * 1.002).toFixed(q?.digits ?? 5) : '-'}</span></td>
-                  <td><span className="text-sm text-slate-300 num">{q?.bid != null ? (q.bid * 0.998).toFixed(q?.digits ?? 5) : '-'}</span></td>
-                  <td>
-                    {sig ? (
-                      <button onClick={() => onTrade(sig)} className="qt-trade-btn">
-                        {t('signals.trade')}
-                      </button>
-                    ) : (
-                      <span className="text-xs text-slate-600">-</span>
-                    )}
-                  </td>
+                  <td><span className="qt-price num" style={{ color: '#ff4d67' }}>{bid ?? '-'}</span></td>
+                  <td><span className="qt-price num" style={{ color: '#2ee07e' }}>{ask ?? '-'}</span></td>
                 </tr>
               )
             })}
