@@ -28,6 +28,7 @@ export default function SlideOrderModal({ signal, accounts, quote, onCancel, onC
   const onlineAccounts = accounts.filter((a) => a.online)
   const [login, setLogin] = useState<string>(() => onlineAccounts[0]?.login ?? '')
   const selected = onlineAccounts.find((a) => a.login === login) || null
+  const [acctMenuOpen, setAcctMenuOpen] = useState(false)
 
   const suggestVolume = (eq?: number | null): string => {
     if (!eq || eq <= 0) return '0.10'
@@ -171,19 +172,36 @@ export default function SlideOrderModal({ signal, accounts, quote, onCancel, onC
 
         <div className="slide-sheet-rows">
           {onlineAccounts.length > 1 && (
-            <div className="slide-row">
+            <div className="slide-row slide-row-acct">
               <span className="k">{t('order.account')}</span>
-              <select
-                className="slide-account-select"
-                value={login}
-                onChange={(e) => setLogin(e.target.value)}
-              >
-                {onlineAccounts.map((a) => (
-                  <option key={a.login} value={a.login}>
-                    {a.login}{a.accountName ? ` · ${a.accountName}` : ''}
-                  </option>
-                ))}
-              </select>
+              <div className="slide-acct-picker">
+                <button
+                  type="button"
+                  className="slide-acct-trigger"
+                  onClick={() => setAcctMenuOpen((v) => !v)}
+                >
+                  <span>{selected?.login}{selected?.accountName ? ` · ${selected.accountName}` : ''}</span>
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ transform: acctMenuOpen ? 'rotate(180deg)' : undefined }}><path d="M6 9l6 6 6-6"/></svg>
+                </button>
+                {acctMenuOpen && (
+                  <>
+                    <div className="slide-acct-backdrop" onClick={() => setAcctMenuOpen(false)} />
+                    <div className="slide-acct-menu">
+                      {onlineAccounts.map((a) => (
+                        <button
+                          type="button"
+                          key={a.login}
+                          className={`slide-acct-opt ${a.login === login ? 'active' : ''}`}
+                          onClick={() => { setLogin(a.login); setAcctMenuOpen(false) }}
+                        >
+                          <span className="opt-login">{a.login}{a.accountName ? ` · ${a.accountName}` : ''}</span>
+                          <span className="opt-equity num">{fmtMoney(a.equity)} {a.accountCurrency ?? ''}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           )}
           {selected && (
@@ -198,7 +216,16 @@ export default function SlideOrderModal({ signal, accounts, quote, onCancel, onC
             <span className="k">{t('order.volume')}</span>
             <span className="stepper">
               <button onClick={() => stepLot(-1)}>−</button>
-              <span className="lot-val num">{parseFloat(volume).toFixed(2)}</span>
+              <input
+                className="lot-val num lot-input"
+                value={volume}
+                inputMode="decimal"
+                onChange={(e) => setVolume(e.target.value.replace(/[^0-9.]/g, ''))}
+                onBlur={() => {
+                  const v = parseFloat(volume)
+                  setVolume((!v || v <= 0 ? 0.01 : Math.min(10, v)).toFixed(2))
+                }}
+              />
               <button onClick={() => stepLot(1)}>+</button>
             </span>
           </div>
