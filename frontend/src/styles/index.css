@@ -1057,6 +1057,20 @@
     text-align: center;
     color: #fff;
   }
+  .slide-account-select {
+    background: var(--nest-hi);
+    border: 1px solid var(--line-hi);
+    border-radius: 8px;
+    padding: 5px 8px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: #fff;
+    cursor: pointer;
+    max-width: 190px;
+  }
+  .slide-account-select:hover {
+    border-color: var(--purple-hi);
+  }
   .slide-track {
     position: relative;
     height: 56px;

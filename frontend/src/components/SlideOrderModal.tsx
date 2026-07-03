@@ -126,9 +126,22 @@ export default function SlideOrderModal({ signal, accounts, quote, onCancel, onC
   const symLetter = (signal.symbol[0] ?? '?').toUpperCase()
   const avaBg = isBuy ? 'rgba(46,224,126,0.15)' : 'rgba(255,77,103,0.15)'
   const avaColor = isBuy ? 'var(--up)' : 'var(--down)'
+  const priceColor = isBuy ? 'var(--up)' : 'var(--down)'
 
   const hasAccounts = onlineAccounts.length > 0
   const offlineMsg = accounts.length === 0 ? t('order.noBridge') : t('order.allOffline')
+
+  const fmtMoney = (n?: number | null) =>
+    n == null ? '-' : n.toLocaleString(undefined, { maximumFractionDigits: 2 })
+
+  // 粗估保证金占用：手数 × 合约规模(假定 100k) / 杠杆，仅作量级提示
+  // Rough margin estimate: lots × contract size (assume 100k) / leverage, indicative only
+  const estMargin = (() => {
+    const vol = parseFloat(volume)
+    const lev = selected?.leverage
+    if (!vol || vol <= 0 || !lev || lev <= 0) return null
+    return (vol * 100000) / lev
+  })()
 
   return (
     <div className="slide-overlay" onClick={onCancel}>
@@ -143,7 +156,7 @@ export default function SlideOrderModal({ signal, accounts, quote, onCancel, onC
             {isBuy ? t('common.buy') : t('common.sell')} {signal.symbol}
           </h3>
           <p className="text-xs text-slate-300 mt-1">
-            现价 <span className="num" style={{ color: 'var(--up)' }}>
+            现价 <span className="num" style={{ color: priceColor }}>
               {quote ? (isBuy ? (quote.ask?.toFixed(quote.digits ?? 5) ?? signal.entry) : (quote.bid?.toFixed(quote.digits ?? 5) ?? signal.entry)) : signal.entry ?? '-'}
             </span>
             {selected && <> · 账户 {selected.login}</>}
@@ -151,6 +164,30 @@ export default function SlideOrderModal({ signal, accounts, quote, onCancel, onC
         </div>
 
         <div className="slide-sheet-rows">
+          {onlineAccounts.length > 1 && (
+            <div className="slide-row">
+              <span className="k">{t('order.account')}</span>
+              <select
+                className="slide-account-select"
+                value={login}
+                onChange={(e) => setLogin(e.target.value)}
+              >
+                {onlineAccounts.map((a) => (
+                  <option key={a.login} value={a.login}>
+                    {a.login}{a.accountName ? ` · ${a.accountName}` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          {selected && (
+            <div className="slide-row">
+              <span className="k">{t('bind.equity')} / {t('bind.balance')}</span>
+              <span className="v num">
+                {fmtMoney(selected.equity)} <i>/ {fmtMoney(selected.balance)} {selected.accountCurrency ?? ''}</i>
+              </span>
+            </div>
+          )}
           <div className="slide-row">
             <span className="k">{t('order.volume')}</span>
             <span className="stepper">
@@ -160,16 +197,7 @@ export default function SlideOrderModal({ signal, accounts, quote, onCancel, onC
             </span>
           </div>
           <div className="slide-row">
-            <span className="k">{t('signals.colSl')} / {t('signals.colTp')}</span>
-            <div className="flex items-center gap-2">
-              <input className="h-8 w-[90px] rounded-lg bg-white/5 border border-down/40 px-2 text-sm num text-down text-right" value={sl} onChange={(e) => setSl(e.target.value)} placeholder={signal.stopLoss != null ? String(signal.stopLoss) : 'SL'} />
-              <i className="text-slate-500">/</i>
-              <input className="h-8 w-[90px] rounded-lg bg-white/5 border border-up/40 px-2 text-sm num text-up text-right" value={tp} onChange={(e) => setTp(e.target.value)} placeholder={signal.takeProfit != null ? String(signal.takeProfit) : 'TP'} />
-            </div>
-          </div>
-          {/* Quick lots */}
-          <div className="slide-row">
-            <span className="k">{t('order.volume')}</span>
+            <span className="k" />
             <div className="flex gap-1.5">
               {QUICK_LOTS.map((q) => (
                 <button key={q} onClick={() => setVolume(q.toFixed(2))} className="px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-xs text-slate-300 hover:border-prism-500/50 hover:text-prism-300 font-mono">
@@ -178,12 +206,29 @@ export default function SlideOrderModal({ signal, accounts, quote, onCancel, onC
               ))}
             </div>
           </div>
+          <div className="slide-row">
+            <span className="k">{t('signals.colSl')} / {t('signals.colTp')}</span>
+            <div className="flex items-center gap-2">
+              <input className="h-8 w-[90px] rounded-lg bg-white/5 border border-down/40 px-2 text-sm num text-down text-right" value={sl} onChange={(e) => setSl(e.target.value)} placeholder={signal.stopLoss != null ? String(signal.stopLoss) : 'SL'} />
+              <i className="text-slate-500">/</i>
+              <input className="h-8 w-[90px] rounded-lg bg-white/5 border border-up/40 px-2 text-sm num text-up text-right" value={tp} onChange={(e) => setTp(e.target.value)} placeholder={signal.takeProfit != null ? String(signal.takeProfit) : 'TP'} />
+            </div>
+          </div>
+          {estMargin != null && (
+            <div className="slide-row">
+              <span className="k">{t('order.estMargin')}</span>
+              <span className="v num">≈ {estMargin.toLocaleString(undefined, { maximumFractionDigits: 0 })} {selected?.accountCurrency ?? ''}</span>
+            </div>
+          )}
         </div>
 
         <div className="slide-note">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 mt-0.5"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>
           <span>{t('order.riskNote')}</span>
         </div>
+        <p className="px-1 -mt-2.5 mb-3 text-[11px] leading-relaxed text-slate-500">
+          {t('order.timeoutNote')}
+        </p>
 
         {!hasAccounts && (
           <div className="mb-3 rounded-lg border border-down/40 bg-down/10 px-3 py-2 text-sm text-down">{offlineMsg}</div>
