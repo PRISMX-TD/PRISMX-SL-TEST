@@ -76,15 +76,21 @@ export default function SlideOrderModal({ signal, accounts, quote, onCancel, onC
     if (!sliding.current || submitting) return
     const pct = getPct(clientX)
     setSlidePct(pct)
-    if (pct >= 100) {
+    if (pct >= 95) {
       sliding.current = false
+      setSlidePct(100)
       handleSubmit()
     }
   }
   const onEnd = () => {
     if (!sliding.current || submitting) return
     sliding.current = false
-    if (slidePct < 95) setSlidePct(0)
+    if (slidePct >= 95) {
+      setSlidePct(100)
+      handleSubmit()
+    } else {
+      setSlidePct(0)
+    }
   }
 
   const handleSubmit = async () => {
@@ -263,6 +269,7 @@ export default function SlideOrderModal({ signal, accounts, quote, onCancel, onC
             <div className="slide-track-label">{t('order.slideToConfirm', '滑动确认下单')}</div>
             <div
               className="slide-knob"
+              style={{ left: `calc(5px + ${slidePct / 100} * (100% - 56px))` }}
               onMouseDown={(e: RMouseEvent) => { e.preventDefault(); onStart(e.clientX) }}
               onTouchStart={(e: RTouchEvent) => onStart(e.touches[0].clientX)}
             >

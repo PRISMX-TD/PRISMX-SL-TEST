@@ -1103,11 +1103,13 @@
     font-weight: 600;
   }
   .slide-knob {
-    position: relative;
+    position: absolute;
     z-index: 2;
+    top: 50%;
+    left: 5px;
+    transform: translateY(-50%);
     width: 46px;
     height: 46px;
-    margin-left: 5px;
     border-radius: 12px;
     background: linear-gradient(130deg, #7c3aed, #a855f7);
     color: #fff;
@@ -1115,6 +1117,7 @@
     place-items: center;
     cursor: grab;
     box-shadow: 0 4px 18px rgba(139, 92, 246, 0.55);
+    transition: left 0.08s;
   }
   .slide-knob:active {
     cursor: grabbing;
