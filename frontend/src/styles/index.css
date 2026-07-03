@@ -1058,6 +1058,7 @@
     color: #fff;
   }
   .stepper .lot-input {
+    width: 52px;
     background: transparent;
     border: none;
     outline: none;
